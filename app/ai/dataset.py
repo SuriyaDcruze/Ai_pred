@@ -25,13 +25,18 @@ def make_labels(
     high: np.ndarray,
     low: np.ndarray,
     horizon: int,
-    deadband_k: float = 0.5,
+    barrier_k: float = 1.0,
     vol_window: int = 20,
+    deadband_k: float = 0.5,  # kept for backward compat; unused by triple-barrier
 ) -> dict[str, np.ndarray]:
     """Return causal supervised targets aligned to each bar ``t``.
 
-    ``deadband_k`` scales the sideways band by recent volatility: a move smaller
-    than ``deadband_k * rolling_std`` is labelled sideways rather than up/down.
+    Direction uses the **triple-barrier method** (López de Prado): set an upper
+    and lower barrier ``barrier_k × recent-volatility`` away from the entry, then
+    look forward up to ``horizon`` bars and label by which barrier price touches
+    *first* — up (0), down (1), or neither/time-out (2). This matches the real
+    trading question ("does it hit my target before my stop?") and is far more
+    learnable than a single next-candle up/down flip.
     """
     n = len(close)
     rel_close = np.full(n, np.nan)
@@ -54,13 +59,27 @@ def make_labels(
         rel_low[t] = fut_low / c0 - 1.0
         realized_vol[t] = np.std(log_ret[t + 1 : t + horizon + 1]) if horizon > 1 else abs(rc)
 
-        band = deadband_k * (roll_std[t] if not np.isnan(roll_std[t]) else 0.0)
-        if rc > band:
-            direction[t] = 0
-        elif rc < -band:
-            direction[t] = 1
-        else:
+        # --- Triple-barrier direction label ---
+        vol = roll_std[t] if not np.isnan(roll_std[t]) else 0.0
+        b = barrier_k * vol
+        if b <= 0:
             direction[t] = 2
+            continue
+        upper, lower = c0 * (1 + b), c0 * (1 - b)
+        label = 2  # neither barrier hit within the horizon (time-out)
+        for j in range(t + 1, t + horizon + 1):
+            hit_up = high[j] >= upper
+            hit_dn = low[j] <= lower
+            if hit_up and hit_dn:
+                label = 2  # both in one bar → ambiguous
+                break
+            if hit_up:
+                label = 0  # up-target hit first
+                break
+            if hit_dn:
+                label = 1  # down-target hit first
+                break
+        direction[t] = label
 
     return {
         "direction": direction,
