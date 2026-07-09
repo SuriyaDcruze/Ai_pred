@@ -71,8 +71,8 @@
     .calls-head select { border-color:#3b82f6; }
     .winrate { font-weight:700; font-size:14px; }
     .scoreboard { text-align:center; font-size:15px; font-weight:700; padding:10px 14px; border-bottom:1px solid #1c2127; background:#0b1016; }
-    .autolog-off { background:#33161a; color:#ff8b8b; border-color:#5a2a2f; }
-    .autolog-on  { background:#0f2f28; color:#5fd3bd; border-color:#26a69a; }
+    .autolog-off { background:#2a313a !important; color:#9aa4af !important; border-color:#3a424d !important; font-weight:700; }
+    .autolog-on  { background:#26a69a !important; color:#04120f !important; border-color:#5fd3bd !important; font-weight:700; box-shadow:0 0 10px rgba(38,166,154,.7); animation:pulse 1.6s infinite; }
     .calls-cols { display:flex; gap:1px; background:#1c2127; }
     .calls-col { flex:1; background:#0e1216; min-width:0; }
     .col-head { padding:8px 14px; font-size:12px; color:#c9d1d9; border-bottom:1px solid #1c2127; }
@@ -147,7 +147,7 @@
         <option value="4h">4 hours</option>
         <option value="1d">1 day</option>
       </select>
-      <button id="autologBtn" class="autolog-off" onclick="toggleAutolog()">🤖 Auto-log AI: OFF</button>
+      <button id="autologBtn" class="autolog-off" onclick="toggleAutolog()">⚪ Auto-log AI: OFF  (click to start)</button>
       <button onclick="logAiPick()">🤖 Log AI pick now</button>
       <span style="margin-left:auto"></span>
       <button onclick="undoLast()">↶ Undo last</button>
@@ -506,7 +506,7 @@ function setAutologBtn(on) {
   const btn = document.getElementById('autologBtn');
   if (!btn) return;
   btn.className = on ? 'autolog-on' : 'autolog-off';
-  btn.textContent = on ? '🤖 Auto-log AI: ON' : '🤖 Auto-log AI: OFF';
+  btn.textContent = on ? '🟢 Auto-log AI: ON  (click to stop)' : '⚪ Auto-log AI: OFF  (click to start)';
 }
 
 /* ---- auto-log runs on a TIMER (independent of the WebSocket) ---- */
