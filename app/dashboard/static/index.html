@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aegis Trading AI</title>
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:#0b0e11; color:#e6e6e6; }
+    header { padding:14px 20px; border-bottom:1px solid #1c2127; display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+    header h1 { font-size:16px; margin:0; font-weight:600; }
+    .controls input, .controls button, .controls select { background:#151a21; border:1px solid #2a313a; color:#e6e6e6; border-radius:6px; padding:6px 10px; }
+    .controls button, button { cursor:pointer; }
+    .live { display:flex; align-items:center; gap:6px; font-size:12px; color:#7a828c; }
+    .dot { width:9px; height:9px; border-radius:50%; background:#555; }
+    .dot.on { background:#26a69a; box-shadow:0 0 8px #26a69a; animation:pulse 1.4s infinite; }
+    .dot.off { background:#ef5350; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    .price { font-size:14px; color:#c9d1d9; }
+    .grid { display:grid; grid-template-columns: 2fr 1fr; gap:16px; padding:16px; }
+    @media (max-width: 900px){ .grid{ grid-template-columns:1fr; } }
+    .toolbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:8px 4px; font-size:12px; color:#c9d1d9; }
+    .toolbar label { display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none; }
+    .toolbar input[type=checkbox] { accent-color:#26a69a; }
+    .toolbar select { background:#151a21; border:1px solid #2a313a; color:#c9d1d9; border-radius:6px; padding:3px 6px; font-size:12px; }
+    .chart-wrap { position:relative; }
+    .tap-popup { position:absolute; z-index:30; display:none; transform:translate(-50%,-118%);
+      background:#11151b; border:1px solid #2a313a; border-radius:10px; padding:9px 10px 8px; box-shadow:0 8px 24px rgba(0,0,0,.55); }
+    .tap-popup .ttl { font-size:11px; color:#c9d1d9; text-align:center; margin-bottom:7px; white-space:nowrap; }
+    .tap-popup .btns { display:flex; gap:7px; }
+    .tap-popup button { border:none; border-radius:8px; padding:7px 13px; font-weight:700; cursor:pointer; font-size:13px; }
+    .tap-popup .buy { background:#26a69a; color:#04120f; } .tap-popup .sell { background:#ef5350; color:#1a0606; }
+    .tap-popup .x { position:absolute; top:3px; right:7px; color:#7a828c; cursor:pointer; font-size:12px; line-height:1; }
+    #chart { height:440px; border:1px solid #1c2127; border-radius:8px; cursor:crosshair; }
+    .hint { font-size:11px; color:#5f6772; margin-top:6px; }
+    .card { background:#11151b; border:1px solid #1c2127; border-radius:8px; padding:16px; }
+    .decision { font-size:30px; font-weight:800; letter-spacing:.5px; }
+    .BUY { color:#26a69a; } .SELL { color:#ef5350; } .WAIT { color:#c9a227; }
+    .row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #171c22; font-size:14px; }
+    .bar { height:10px; border-radius:5px; background:#1c2127; overflow:hidden; margin:4px 0 10px; }
+    .bar > span { display:block; height:100%; transition:width .4s ease; }
+    h4 { margin:14px 0 4px; font-size:13px; color:#9aa4af; text-transform:uppercase; letter-spacing:.6px; }
+    ul { padding-left:18px; margin:6px 0; font-size:13px; color:#b8c0c9; }
+    .muted { color:#7a828c; font-size:12px; }
+    .flash { animation:flash .8s ease; }
+    @keyframes flash { from{background:#1b2530} to{background:#11151b} }
+
+    /* Chat dock */
+    .chat { margin:0 16px 16px; border:1px solid #1c2127; border-radius:10px; background:#0e1216; display:flex; flex-direction:column; height:320px; }
+    .chat-head { padding:10px 14px; border-bottom:1px solid #1c2127; font-size:13px; color:#9aa4af; display:flex; align-items:center; gap:8px; }
+    .chat-log { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; }
+    .msg { max-width:80%; padding:9px 12px; border-radius:12px; font-size:13.5px; white-space:pre-wrap; line-height:1.45; }
+    .msg.user { align-self:flex-end; background:#1d4ed8; color:#eaf0ff; border-bottom-right-radius:3px; }
+    .msg.bot { align-self:flex-start; background:#161c23; border:1px solid #232b34; border-bottom-left-radius:3px; }
+    .msg.bot b { color:#e6e6e6; }
+    .quick { display:flex; gap:8px; flex-wrap:wrap; padding:0 14px 10px; }
+    .quick button { background:#151a21; border:1px solid #2a313a; color:#c9d1d9; border-radius:14px; padding:5px 11px; font-size:12px; }
+    .quick button:hover { border-color:#3b82f6; }
+    .chat-in { display:flex; gap:8px; padding:12px 14px; border-top:1px solid #1c2127; }
+    .chat-in input { flex:1; background:#151a21; border:1px solid #2a313a; color:#e6e6e6; border-radius:8px; padding:9px 12px; font-size:14px; }
+    .chat-in button { background:#26a69a; border:none; color:#04120f; font-weight:700; border-radius:8px; padding:9px 16px; }
+    .tag { font-size:11px; padding:2px 7px; border-radius:6px; }
+    .tag.g { background:#0f2f28; color:#5fd3bd; } .tag.r { background:#33161a; color:#ff8b8b; }
+
+    /* My Calls */
+    .calls { margin:0 16px 16px; border:1px solid #1c2127; border-radius:10px; background:#0e1216; }
+    .calls-head { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #1c2127; font-size:13px; color:#c9d1d9; flex-wrap:wrap; }
+    .calls-head button, .calls-head select { background:#151a21; border:1px solid #2a313a; color:#c9d1d9; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer; }
+    .calls-head select { border-color:#3b82f6; }
+    .winrate { font-weight:700; font-size:14px; }
+    .scoreboard { text-align:center; font-size:15px; font-weight:700; padding:10px 14px; border-bottom:1px solid #1c2127; background:#0b1016; }
+    .autolog-off { background:#33161a; color:#ff8b8b; border-color:#5a2a2f; }
+    .autolog-on  { background:#0f2f28; color:#5fd3bd; border-color:#26a69a; }
+    .calls-cols { display:flex; gap:1px; background:#1c2127; }
+    .calls-col { flex:1; background:#0e1216; min-width:0; }
+    .col-head { padding:8px 14px; font-size:12px; color:#c9d1d9; border-bottom:1px solid #1c2127; }
+    .calls-list { max-height:200px; overflow-y:auto; padding:8px 14px; }
+    .call .src { font-size:11px; padding:2px 6px; border-radius:6px; background:#161c23; color:#9aa4af; }
+    .call { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid #171c22; font-size:13px; }
+    .call .badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; }
+    .badge.WIN { background:#0f2f28; color:#5fd3bd; } .badge.LOSS { background:#33161a; color:#ff8b8b; } .badge.OPEN { background:#2a2410; color:#e6c34a; }
+    .call .dir { font-weight:700; } .call .dir.BUY { color:#26a69a; } .call .dir.SELL { color:#ef5350; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚡ Aegis Trading AI</h1>
+    <div class="controls">
+      <input id="symbol" value="BTCUSDT" size="10" />
+      <button onclick="connect()">Go Live</button>
+    </div>
+    <div class="live"><span id="dot" class="dot"></span><span id="status">disconnected</span></div>
+    <div class="price" id="price"></div>
+  </header>
+
+  <div class="grid">
+    <div>
+      <div class="toolbar">
+        <span class="muted">Show on chart:</span>
+        <label><input type="checkbox" id="tgLevels" checked onchange="applyFilters()"> 📏 Entry/Stop/Target lines</label>
+        <label><input type="checkbox" id="tgCalls" checked onchange="applyFilters()"> 📓 My calls</label>
+        <label><input type="checkbox" id="tgPatterns" onchange="onPatternToggle()"> 🕯️ Candle patterns</label>
+        <select id="patFilter" onchange="loadPatterns()" title="Which patterns to show">
+          <option value="strong">Strong only (reversals)</option>
+          <option value="all">All patterns</option>
+          <option value="bull">Bullish only</option>
+          <option value="bear">Bearish only</option>
+        </select>
+      </div>
+      <div class="chart-wrap">
+        <div id="chart"></div>
+        <div id="callOverlay" style="position:absolute;inset:0;pointer-events:none;z-index:14"></div>
+        <div id="tapPopup" class="tap-popup"></div>
+      </div>
+      <div class="hint">💡 Tap anywhere on the chart — a BUY / SELL choice pops up right there. Pick one; the AI picks its own; watch who wins.</div>
+    </div>
+    <div class="card" id="panel"><div class="muted">Connecting to live feed…</div></div>
+  </div>
+
+  <div class="calls" id="callsCard">
+    <div class="calls-head">
+      📓 Track Record
+      <span class="muted">⏱ AI predicts on:</span>
+      <select id="tf" onchange="connect()" title="Timeframe the AI predicts &amp; logs on">
+        <option value="1m">1 min</option>
+        <option value="3m">3 min</option>
+        <option value="5m">5 min</option>
+        <option value="15m">15 min</option>
+        <option value="30m">30 min</option>
+        <option value="1h">1 hour</option>
+        <option value="2h">2 hours</option>
+        <option value="4h">4 hours</option>
+        <option value="1d">1 day</option>
+      </select>
+      <button id="autologBtn" class="autolog-off" onclick="toggleAutolog()">🤖 Auto-log AI: OFF</button>
+      <button onclick="logAiPick()">🤖 Log AI pick now</button>
+      <span style="margin-left:auto"></span>
+      <button onclick="undoLast()">↶ Undo last</button>
+      <button onclick="loadCalls()">↻</button>
+      <button onclick="clearCalls()">Clear</button>
+    </div>
+    <div id="scoreboard" class="scoreboard">🏆 Log some calls to see who wins — AI vs You</div>
+    <div class="calls-cols">
+      <div class="calls-col">
+        <div class="col-head">👆 <b>You</b> <span id="youStat" class="muted"></span></div>
+        <div class="calls-list" id="youList"><div class="muted">Tap the chart to log your calls.</div></div>
+      </div>
+      <div class="calls-col">
+        <div class="col-head">🤖 <b>AI</b> <span id="aiStat" class="muted"></span></div>
+        <div class="calls-list" id="aiList"><div class="muted">AI picks appear here (tap the chart, or turn on Auto-log).</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat">
+    <div class="chat-head">🤖 Trade Assistant <span class="muted" id="chatctx"></span></div>
+    <div class="chat-log" id="log"></div>
+    <div class="quick">
+      <button onclick="ask('Where do I trade?')">Where do I trade?</button>
+      <button onclick="ask('Should I buy or sell?')">Buy or sell?</button>
+      <button onclick="ask('Why wait?')">Why wait?</button>
+      <button onclick="ask('What is my stop and risk?')">Stop &amp; risk</button>
+      <button onclick="ask('What are the targets?')">Targets</button>
+    </div>
+    <div class="chat-in">
+      <input id="chatbox" placeholder="Ask about a trade… or tap the chart" onkeydown="if(event.key==='Enter')ask()" />
+      <button onclick="ask()">Send</button>
+    </div>
+  </div>
+
+<script>
+const COLORS = { green:'#26a69a', red:'#ef5350', yellow:'#c9a227' };
+const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+  layout: { background: { color: '#0b0e11' }, textColor: '#c9d1d9' },
+  grid: { vertLines: { color: '#161b22' }, horzLines: { color: '#161b22' } },
+  timeScale: { timeVisible: true, secondsVisible: false },
+  rightPriceScale: { borderColor: '#1c2127' },
+});
+const series = chart.addCandlestickSeries({
+  upColor:'#26a69a', downColor:'#ef5350', wickUpColor:'#26a69a', wickDownColor:'#ef5350', borderVisible:false,
+});
+
+let ws = null, curSymbol = 'BTCUSDT', curTf = '1m', priceLines = [];
+let patternMarkers = [], callMarkers = [], lastLevels = [], lastBarTime = 0, barInterval = 60;
+const toSec = iso => Math.floor(new Date(iso).getTime() / 1000);
+const fmtPrice = p => p == null ? '' : Number(p).toLocaleString(undefined, {maximumFractionDigits: 2});
+
+/* ---- chart filters (toggle features so the graph stays clean) ---- */
+const tg = id => { const el = document.getElementById(id); return el ? el.checked : false; };
+const STRONG_PATTERNS = new Set(['Hammer','Shooting Star','Bullish Engulfing','Bearish Engulfing',
+  'Morning Star','Evening Star','Tweezer Top','Tweezer Bottom','Bullish Harami','Bearish Harami']);
+
+function refreshMarkers() {
+  const pats = tg('tgPatterns') ? patternMarkers : [];
+  const calls = tg('tgCalls') ? callMarkers : [];
+  try {
+    series.setMarkers([...pats, ...calls].filter(m => m.time).sort((a, b) => a.time - b.time));
+  } catch (e) { console.warn('marker render skipped:', e.message); }
+}
+
+function applyFilters() { drawMarkers(lastLevels); refreshMarkers(); }
+function onPatternToggle() { loadPatterns(); }
+
+async function loadPatterns() {
+  if (!tg('tgPatterns')) { patternMarkers = []; refreshMarkers(); return; }
+  const mode = document.getElementById('patFilter').value;
+  try {
+    const j = await (await fetch(`/patterns?symbol=${curSymbol}&timeframe=${curTf}&limit=300`)).json();
+    let pats = j.patterns;
+    if (mode === 'strong') pats = pats.filter(p => STRONG_PATTERNS.has(p.name));
+    else if (mode === 'bull') pats = pats.filter(p => p.dir === 'bull');
+    else if (mode === 'bear') pats = pats.filter(p => p.dir === 'bear');
+    patternMarkers = pats.map(p => ({
+      time: p.time,
+      position: p.dir === 'bear' ? 'aboveBar' : 'belowBar',
+      color: p.dir === 'bull' ? '#26a69a' : p.dir === 'bear' ? '#ef5350' : '#7a828c',
+      shape: 'circle',
+      text: p.name,
+    }));
+    refreshMarkers();
+  } catch (e) { /* ignore */ }
+}
+const setDot = (cls, text) => {
+  document.getElementById('dot').className = 'dot ' + cls;
+  document.getElementById('status').textContent = text;
+};
+
+/* ---------- live chart feed ---------- */
+function connect() {
+  if (ws) { ws.onclose = null; ws.close(); }
+  curSymbol = document.getElementById('symbol').value.toUpperCase();
+  curTf = document.getElementById('tf').value.trim();
+  document.getElementById('chatctx').textContent = `· ${curSymbol} ${curTf}`;
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  setDot('', 'connecting…');
+  ws = new WebSocket(`${proto}://${location.host}/ws/signals?symbol=${curSymbol}&timeframe=${curTf}`);
+  ws.onopen = () => setDot('on', `LIVE · ${curSymbol} · ${curTf}`);
+  ws.onclose = () => { setDot('off', 'disconnected — retrying'); setTimeout(connect, 3000); };
+  ws.onerror = () => setDot('off', 'error');
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.type === 'history') {
+      const bars = msg.candles.map(c => ({ time: toSec(c.open_time), open:c.open, high:c.high, low:c.low, close:c.close }));
+      lastBarTime = bars.length ? bars[bars.length - 1].time : 0;
+      barInterval = bars.length > 1 ? bars[bars.length - 1].time - bars[bars.length - 2].time : 60;
+      // A little "future" room so you can click slightly ahead in time.
+      const future = [];
+      for (let i = 1; i <= 15; i++) future.push({ time: lastBarTime + barInterval * i });
+      series.setData(bars.concat(future));
+      chart.timeScale().fitContent();
+      loadPatterns();   // draw candlestick pattern markers
+      loadCalls();      // draw logged calls + win rate
+    } else if (msg.type === 'candle') {
+      const c = msg.candle;
+      const t = toSec(c.open_time);
+      // Guard: never feed an older bar than the last one (happens on reconnect) —
+      // Lightweight Charts throws "Cannot update oldest data" otherwise.
+      if (t >= lastBarTime) {
+        series.update({ time: t, open:c.open, high:c.high, low:c.low, close:c.close });
+        lastBarTime = t;
+      }
+      document.getElementById('price').textContent = Number(c.close).toLocaleString();
+      renderCallOverlay();   // keep the You/AI dots glued as the scale shifts
+    } else if (msg.type === 'signal') {
+      renderSignal(msg.signal);
+      loadCalls();   // re-score every call live as the new candle prints
+    }
+  };
+}
+
+/* ---------- signal panel ---------- */
+function bar(v, color){ return `<div class="bar"><span style="width:${Math.round(v*100)}%;background:${color}"></span></div>`; }
+function renderSignal(p) {
+  const risk = p.risk, panel = document.getElementById('panel');
+  panel.classList.remove('flash'); void panel.offsetWidth; panel.classList.add('flash');
+  panel.innerHTML = `
+    <div class="decision ${p.decision}">${p.decision}</div>
+    <div class="muted">${p.market_status} · trend ${p.trend_strength} · ${new Date(p.generated_at).toLocaleTimeString()}</div>
+    <h4>Confidence — ${Math.round(p.confidence*100)}%</h4>
+    ${bar(p.confidence, p.confidence >= 0.8 ? '#26a69a' : '#c9a227')}
+    ${risk ? `
+      <div class="row"><span>Entry</span><span>${risk.entry_low} – ${risk.entry_high}</span></div>
+      <div class="row"><span>Stop</span><span>${risk.stop_loss}</span></div>
+      <div class="row"><span>TP1 / TP2</span><span>${risk.take_profit_1} / ${risk.take_profit_2}</span></div>
+      <div class="row"><span>R:R</span><span>1 : ${risk.risk_reward}</span></div>
+      <div class="row"><span>Size</span><span>${risk.position_size} (${risk.account_risk_pct}%)</span></div>` : ''}
+    ${(p.patterns && p.patterns.length) ? `<h4>🕯️ Candle patterns spotted</h4><ul>${p.patterns.map(x=>`<li>${x}</li>`).join('')}</ul>` : ''}
+    <h4>✅ What I'm seeing</h4><ul>${p.reasons.map(x=>`<li>${x}</li>`).join('')}</ul>
+    <h4>⚠️ Watch out for</h4><ul>${(p.risks.length?p.risks:['Nothing major right now']).map(x=>`<li>${x}</li>`).join('')}</ul>
+    <div class="muted" style="margin-top:10px">${p.final_recommendation}</div>`;
+  if (risk) drawMarkers([
+    { price:(risk.entry_low+risk.entry_high)/2, color:'green', label:'Entry' },
+    { price:risk.stop_loss, color:'red', label:'Stop' },
+    { price:risk.take_profit_1, color:'green', label:'TP1' },
+    { price:risk.take_profit_2, color:'green', label:'TP2' },
+  ]);
+}
+
+/* ---------- chart level markers (entry/stop/target lines) ---------- */
+function drawMarkers(markers) {
+  lastLevels = markers || lastLevels;
+  priceLines.forEach(l => series.removePriceLine(l));
+  priceLines = [];
+  if (!tg('tgLevels')) return;             // hidden by the filter toggle
+  (lastLevels || []).forEach(m => {
+    priceLines.push(series.createPriceLine({
+      price: m.price,
+      color: COLORS[m.color] || '#888',
+      lineWidth: m.style === 'marker' ? 3 : 2,
+      lineStyle: m.style === 'marker' ? LightweightCharts.LineStyle.Solid : LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: m.label,
+    }));
+  });
+}
+
+/* ---------- chat ---------- */
+function addMsg(text, who) {
+  const log = document.getElementById('log');
+  const div = document.createElement('div');
+  div.className = 'msg ' + who;
+  div.innerHTML = text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function ask(message, price, tapTime) {
+  const box = document.getElementById('chatbox');
+  message = message || box.value.trim();
+  if (!message && price == null) return;
+  box.value = '';
+  addMsg(price != null ? `${message} (@ ${price.toFixed(2)})` : message, 'user');
+  addMsg('…', 'bot');
+  const log = document.getElementById('log');
+  try {
+    const r = await fetch('/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ symbol:curSymbol, timeframe:curTf, message, price })
+    });
+    const data = await r.json();
+    log.lastChild.remove();
+    addMsg(data.reply, 'bot');
+    if (data.markers && data.markers.length) drawMarkers(data.markers);
+  } catch (e) {
+    log.lastChild.remove();
+    addMsg('⚠️ Could not reach the assistant.', 'bot');
+  }
+}
+
+/* ---------- Ask the human BUY or SELL, then run You vs AI ---------- */
+let pendingTap = null;
+const postCall = (body) => fetch('/calls', {
+  method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+});
+
+function showTapPopup(x, y, entry, time) {
+  time = Math.floor(time);
+  pendingTap = { entry, time };
+  const future = time > lastBarTime;
+  const when = new Date(time * 1000).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+  const el = document.getElementById('tapPopup');
+  el.innerHTML = `<span class="x" onclick="hideTapPopup()">✕</span>
+    <div class="ttl">Your bet @ ${fmtPrice(entry)}<br>
+      <span style="color:#7a828c;font-size:10px">${future ? '⏩ ' : '🕐 '}${when}${future ? ' (future)' : ''}</span></div>
+    <div class="btns">
+      <button class="buy" onclick="humanBet('BUY')">📈 UP</button>
+      <button class="sell" onclick="humanBet('SELL')">📉 DOWN</button>
+    </div>`;
+  // Keep the popup inside the chart bounds.
+  const cw = document.getElementById('chart').clientWidth;
+  el.style.left = Math.max(60, Math.min(x, cw - 60)) + 'px';
+  el.style.top = Math.max(50, y) + 'px';
+  el.style.display = 'block';
+}
+
+function hideTapPopup() {
+  document.getElementById('tapPopup').style.display = 'none';
+  pendingTap = null;
+}
+
+async function humanBet(side) {
+  if (!pendingTap) return;
+  const { entry, time } = pendingTap;
+  pendingTap = null;
+  document.getElementById('tapPopup').style.display = 'none';
+  try {
+    // One fair round: both bet against a SHARED band -> they settle together.
+    const r = await fetch(`/round?symbol=${curSymbol}&timeframe=${curTf}&clicked_time=${time}&entry=${entry}&human_side=${side}`, { method:'POST' });
+    const d = await r.json();
+    const when = new Date(time * 1000).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+    addMsg(`✅ Round set at <b>${fmtPrice(entry)}</b> (${when}): 👆 You bet <b>${side}</b> vs 🤖 AI bet <b>${d.ai_side}</b>. ` +
+           (d.agree ? '🤝 You agree — both win or lose together.'
+                    : `⚔️ You disagree! If price hits <b>${fmtPrice(d.upper)}</b> first, UP wins; if <b>${fmtPrice(d.lower)}</b> first, DOWN wins. One of you WILL win.`), 'bot');
+    loadCalls();
+  } catch (e) { addMsg('⚠️ Could not set the round — try again.', 'bot'); }
+}
+
+const wrText = s => s.win_rate_pct == null
+  ? `${s.total} logged, none closed yet`
+  : `${s.win_rate_pct}% win · ${s.wins}W/${s.losses}L/${s.open} open · avg ${s.expectancy_r}R`;
+
+/* head-to-head: who's winning, AI or You */
+function renderScoreboard(ai, you) {
+  const el = document.getElementById('scoreboard');
+  const aiR = ai.win_rate_pct, youR = you.win_rate_pct;
+  if (aiR == null && youR == null) {
+    el.textContent = '🏆 Log some calls to see who wins — AI vs You';
+    el.style.color = '#9aa4af'; return;
+  }
+  if (aiR == null) { el.innerHTML = `🤖 AI ${youWaiting('You', you)} — 👆 You leading so far at <b>${youR}%</b>`; el.style.color = '#5fd3bd'; return; }
+  if (youR == null) { el.innerHTML = `🤖 AI leading so far at <b>${aiR}%</b> — 👆 You ${youWaiting('AI', you)}`; el.style.color = '#5fd3bd'; return; }
+  // both have results: compare win rate, tiebreak on expectancy
+  let msg, color;
+  const better = (a, b) => a.win_rate_pct !== b.win_rate_pct ? a.win_rate_pct - b.win_rate_pct : a.expectancy_r - b.expectancy_r;
+  const d = better(ai, you);
+  if (d > 0)      { msg = `🤖 AI is WINNING — ${aiR}% vs ${youR}% You`;  color = '#5fd3bd'; }
+  else if (d < 0) { msg = `👆 YOU are WINNING — ${youR}% vs ${aiR}% AI`; color = '#26a69a'; }
+  else            { msg = `🤝 Dead heat — both ${aiR}%`; color = '#c9a227'; }
+  el.innerHTML = `🏆 ${msg}`;
+  el.style.color = color;
+}
+const youWaiting = (who, s) => s.open > 0 ? 'still has open trades' : 'has no calls yet';
+
+async function loadCalls() {
+  try {
+    const j = await (await fetch('/calls')).json();
+    const s = j.stats;
+    document.getElementById('youStat').textContent = wrText(s.manual);
+    document.getElementById('aiStat').textContent = wrText(s.ai);
+    renderScoreboard(s.ai, s.manual);
+    // Separate lists so You and AI never get mixed up.
+    renderList('youList', j.calls.filter(c => c.source !== 'ai'), 'Tap the chart to log your calls.');
+    renderList('aiList',  j.calls.filter(c => c.source === 'ai'), 'AI picks appear here (tap the chart, or turn on Auto-log).');
+    currentCalls = j.calls;
+    renderCallOverlay();
+  } catch (e) { /* ignore */ }
+}
+
+function renderList(id, calls, emptyMsg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!calls.length) { el.innerHTML = `<div class="muted">${emptyMsg}</div>`; return; }
+  el.innerHTML = calls.map(c => `
+    <div class="call">
+      <span class="badge ${c.status}">${c.status === 'WIN' ? '✓' : c.status === 'LOSS' ? '✗' : '…'}</span>
+      <span class="dir ${c.side}">${c.side === 'BUY' ? 'BUY ▲' : 'SELL ▼'}</span>
+      <span>@ ${fmtPrice(c.entry)}</span>
+      <span class="muted" style="margin-left:auto">${new Date(c.created_at).toLocaleTimeString()}</span>
+    </div>`).join('');
+}
+
+/* place each logged call at its precise (time, price) point on the chart */
+let currentCalls = [];
+function renderCallOverlay() {
+  const ov = document.getElementById('callOverlay');
+  if (!ov) return;
+  ov.innerHTML = '';
+  const ts = chart.timeScale();
+  currentCalls.filter(c => c.symbol === curSymbol && c.timeframe === curTf).forEach(c => {
+    const x = ts.timeToCoordinate(c.clicked_time);
+    const y = series.priceToCoordinate(c.entry);
+    if (x == null || y == null) return;                       // off-screen
+    const buy = c.side === 'BUY';
+    const who = c.source === 'ai' ? '🤖AI' : '👆You';
+    const out = c.status === 'WIN' ? ' ✓' : c.status === 'LOSS' ? ' ✗' : '';
+    const color = c.status === 'WIN' ? '#26a69a' : c.status === 'LOSS' ? '#ef5350' : (buy ? '#26a69a' : '#ef5350');
+    // You and AI enter at the SAME point — offset them so both are visible
+    // (AI sits just above the point, You just below).
+    const dy = c.source === 'ai' ? -13 : 13;
+    const tag = document.createElement('div');
+    tag.style.cssText = `position:absolute;left:${x}px;top:${y + dy}px;transform:translate(-50%,-50%);` +
+      `background:${color};color:#04120f;font-size:9.5px;font-weight:700;` +
+      `border-radius:5px;padding:1px 5px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.5);` +
+      `opacity:${c.status === 'OPEN' ? .9 : 1}`;
+    tag.textContent = `${who}${buy ? '▲' : '▼'}${out}`;
+    ov.appendChild(tag);
+  });
+}
+/* keep the dots glued to their spot as you pan/zoom or new candles arrive */
+chart.timeScale().subscribeVisibleTimeRangeChange(renderCallOverlay);
+
+async function logAiPick() {
+  await fetch(`/calls/ai?symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' });
+  loadCalls();
+}
+
+function setAutologBtn(on) {
+  const btn = document.getElementById('autologBtn');
+  if (!btn) return;
+  btn.className = on ? 'autolog-on' : 'autolog-off';
+  btn.textContent = on ? '🤖 Auto-log AI: ON' : '🤖 Auto-log AI: OFF';
+}
+
+async function toggleAutolog() {
+  const turningOn = document.getElementById('autologBtn').classList.contains('autolog-off');
+  await fetch(`/autolog?enabled=${turningOn}`, { method: 'POST' });
+  setAutologBtn(turningOn);
+  if (turningOn) {
+    await fetch(`/calls/ai?symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' });
+    addMsg('🤖 Auto-log ON — logged one now; the AI keeps logging every candle close.', 'bot');
+    loadCalls();
+  } else {
+    addMsg('🤖 Auto-log OFF.', 'bot');
+  }
+}
+
+async function syncAutolog() {
+  try { setAutologBtn((await (await fetch('/autolog')).json()).autolog); } catch (e) { /* ignore */ }
+}
+syncAutolog();
+
+/* keep results fresh automatically — re-score every 15s without manual refresh */
+setInterval(() => { if (ws && ws.readyState === 1) loadCalls(); }, 15000);
+
+async function clearCalls() {
+  await fetch('/calls', { method: 'DELETE' });
+  loadCalls();
+}
+
+async function undoLast() {
+  // Remove the last round (You + AI = 2 calls).
+  await fetch('/calls/recent?count=2', { method: 'DELETE' });
+  loadCalls();
+}
+
+/* tap the chart → pop up a BUY/SELL choice right at the click spot */
+chart.subscribeClick(param => {
+  if (!param.point) return;
+  const price = series.coordinateToPrice(param.point.y);
+  if (price == null) return;
+  // Exact time under the click (works on candles AND in the future slots),
+  // instead of snapping to the current candle.
+  let t = param.time;
+  if (t == null) { try { t = chart.timeScale().coordinateToTime(param.point.x); } catch (e) {} }
+  if (t == null) t = lastBarTime;
+  showTapPopup(param.point.x, param.point.y, price, t);
+});
+
+connect();
+addMsg("Hi — I'm your trade co-pilot. Ask me where to enter, or **tap the chart** to test any price (green = long, red = short).", 'bot');
+</script>
+</body>
+</html>

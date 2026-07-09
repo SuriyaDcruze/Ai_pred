@@ -1,0 +1,25 @@
+# Render blueprint. Push this repo to GitHub, then in Render:
+#   New → Blueprint → pick this repo. It reads this file automatically.
+services:
+  - type: web
+    name: aegis-trading-ai
+    runtime: python
+    # 'starter' = 512 MB RAM (tight for torch — upgrade to 'standard' / 2 GB if
+    # the service restarts with "out of memory").
+    plan: standard
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: AEGIS_DEVICE
+        value: cpu
+      - key: PYTHON_VERSION
+        value: "3.12.4"
+      # Set your Anthropic key here to enable the GPT-style chat (optional).
+      - key: ANTHROPIC_API_KEY
+        sync: false
+    # Persistent disk so the "My Calls" track record survives restarts/redeploys.
+    disk:
+      name: aegis-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

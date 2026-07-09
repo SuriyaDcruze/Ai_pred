@@ -1,0 +1,46 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      AEGIS_ENV: production
+      AEGIS_DEVICE: cpu
+      AEGIS_POSTGRES_DSN: postgresql+asyncpg://aegis:aegis@postgres:5432/aegis
+      AEGIS_REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ../artifacts:/app/artifacts
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    # For GPU, uncomment and use the CUDA Dockerfile base:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aegis
+      POSTGRES_PASSWORD: aegis
+      POSTGRES_DB: aegis
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../app/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:
