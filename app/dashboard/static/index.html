@@ -246,6 +246,9 @@ function connect() {
   curSymbol = document.getElementById('symbol').value.toUpperCase();
   curTf = document.getElementById('tf').value.trim();
   document.getElementById('chatctx').textContent = `· ${curSymbol} ${curTf}`;
+  // if auto-log is on, restart its timer for the new coin/timeframe
+  if (document.getElementById('autologBtn')?.classList.contains('autolog-on')) startAutolog();
+  loadCalls();
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   setDot('', 'connecting…');
   ws = new WebSocket(`${proto}://${location.host}/ws/signals?symbol=${curSymbol}&timeframe=${curTf}`);
@@ -506,26 +509,51 @@ function setAutologBtn(on) {
   btn.textContent = on ? '🤖 Auto-log AI: ON' : '🤖 Auto-log AI: OFF';
 }
 
+/* ---- auto-log runs on a TIMER (independent of the WebSocket) ---- */
+let autologTimer = null;
+function tfSeconds(tf) {
+  const n = parseInt(tf) || 1;
+  return tf.endsWith('h') ? n * 3600 : tf.endsWith('d') ? n * 86400 : n * 60;
+}
+async function logOneAiPick() {
+  try {
+    await fetch(`/calls/ai?symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' });
+    loadCalls();
+  } catch (e) { /* ignore */ }
+}
+function startAutolog() {
+  clearInterval(autologTimer);
+  // one fresh AI prediction per candle (server dedupes duplicates within a candle)
+  const ms = Math.max(30, tfSeconds(curTf)) * 1000;
+  autologTimer = setInterval(logOneAiPick, ms);
+}
+function stopAutolog() { clearInterval(autologTimer); autologTimer = null; }
+
 async function toggleAutolog() {
   const turningOn = document.getElementById('autologBtn').classList.contains('autolog-off');
   await fetch(`/autolog?enabled=${turningOn}`, { method: 'POST' });
   setAutologBtn(turningOn);
   if (turningOn) {
-    await fetch(`/calls/ai?symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' });
-    addMsg('🤖 Auto-log ON — logged one now; the AI keeps logging every candle close.', 'bot');
-    loadCalls();
+    await logOneAiPick();                 // log one immediately
+    startAutolog();                       // then one per candle, via timer
+    addMsg(`🤖 Auto-log ON — the AI now predicts & logs one pick every ${curTf}. Statuses update by themselves.`, 'bot');
   } else {
+    stopAutolog();
     addMsg('🤖 Auto-log OFF.', 'bot');
   }
 }
 
 async function syncAutolog() {
-  try { setAutologBtn((await (await fetch('/autolog')).json()).autolog); } catch (e) { /* ignore */ }
+  try {
+    const on = (await (await fetch('/autolog')).json()).autolog;
+    setAutologBtn(on);
+    if (on) startAutolog();
+  } catch (e) { /* ignore */ }
 }
 syncAutolog();
 
-/* keep results fresh automatically — re-score every 15s without manual refresh */
-setInterval(() => { if (ws && ws.readyState === 1) loadCalls(); }, 15000);
+/* keep the log + graph fresh automatically — re-score every 8s, no refresh needed */
+setInterval(loadCalls, 8000);
 
 async function clearCalls() {
   await fetch('/calls', { method: 'DELETE' });
