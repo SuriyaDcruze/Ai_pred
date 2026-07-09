@@ -16,6 +16,6 @@ htmlcov/
 *.log
 .DS_Store
 
-data/
+/data/
 aegis_project.zip
 pdf/
