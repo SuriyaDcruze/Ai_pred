@@ -88,7 +88,20 @@
   <header>
     <h1>⚡ Aegis Trading AI</h1>
     <div class="controls">
-      <input id="symbol" value="BTCUSDT" size="10" />
+      <select id="symbol" onchange="connect()" title="Cryptocurrency">
+        <option value="BTCUSDT">₿ Bitcoin (BTC)</option>
+        <option value="ETHUSDT">Ξ Ethereum (ETH)</option>
+        <option value="BNBUSDT">BNB</option>
+        <option value="SOLUSDT">Solana (SOL)</option>
+        <option value="XRPUSDT">XRP</option>
+        <option value="ADAUSDT">Cardano (ADA)</option>
+        <option value="DOGEUSDT">Dogecoin (DOGE)</option>
+        <option value="AVAXUSDT">Avalanche (AVAX)</option>
+        <option value="LINKUSDT">Chainlink (LINK)</option>
+        <option value="LTCUSDT">Litecoin (LTC)</option>
+        <option value="DOTUSDT">Polkadot (DOT)</option>
+        <option value="TRXUSDT">TRON (TRX)</option>
+      </select>
       <button onclick="connect()">Go Live</button>
     </div>
     <div class="live"><span id="dot" class="dot"></span><span id="status">disconnected</span></div>
