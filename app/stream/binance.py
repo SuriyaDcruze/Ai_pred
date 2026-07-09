@@ -93,6 +93,10 @@ class BinanceClient:
         return out[-total:]
 
     async def stream_candles(self, symbol: str, interval: str) -> AsyncIterator[Candle]:
+        """Yield live candles. Prefers Binance's WebSocket; if that host is
+        geo-blocked (HTTP 451 on cloud IPs) it permanently falls back to polling
+        the unblocked REST mirror, so the live feed works everywhere.
+        """
         url = f"{self._ws}/{symbol.lower()}@kline_{interval}"
         backoff = 1.0
         while True:
@@ -101,14 +105,41 @@ class BinanceClient:
                     logger.info("Connected to %s kline stream %s %s", self.name, symbol, interval)
                     backoff = 1.0
                     async for raw in ws:
-                        msg = json.loads(raw)
-                        k = msg.get("k")
+                        k = json.loads(raw).get("k")
                         if k:
                             yield self._kline_event_to_candle(k)
             except (websockets.ConnectionClosed, OSError) as exc:  # pragma: no cover - network
                 logger.warning("Stream dropped (%s); reconnecting in %.0fs", exc, backoff)
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 30.0)
+            except Exception as exc:  # noqa: BLE001 - e.g. geo-block (451) -> poll instead
+                logger.warning("Binance WS blocked (%s); switching to REST polling.", exc)
+                async for candle in self._poll_candles(symbol, interval):
+                    yield candle
+                return
+
+    async def _poll_candles(self, symbol: str, interval: str) -> AsyncIterator[Candle]:
+        """Poll the REST mirror for the latest candle (~every 4s) as a WS fallback.
+
+        Yields the forming candle (``closed=False``) each poll, and the just-closed
+        candle (``closed=True``) once when a new candle begins.
+        """
+        last_open = None
+        while True:
+            try:
+                rows = await self.fetch_klines(symbol, interval, limit=2)
+                if rows:
+                    forming = rows[-1]
+                    if last_open is not None and forming.open_time != last_open and len(rows) >= 2:
+                        prev = rows[-2]
+                        prev.closed = True
+                        yield prev
+                    last_open = forming.open_time
+                    forming.closed = False
+                    yield forming
+            except Exception as exc:  # noqa: BLE001 - network hiccup, keep polling
+                logger.warning("poll fetch failed: %s", exc)
+            await asyncio.sleep(4.0)
 
     @staticmethod
     def _row_to_candle(r: list) -> Candle:
