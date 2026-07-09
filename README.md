@@ -1,3 +1,13 @@
+---
+title: Aegis Trading AI
+emoji: ⚡
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Aegis — Real-Time Trading AI
 
 A modular AI trading assistant. It streams live market data, engineers technical +

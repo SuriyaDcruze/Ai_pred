@@ -76,6 +76,14 @@ async def _get_candles(req: AnalyzeRequest) -> list[Candle]:
     return await client.fetch_history(req.symbol, req.timeframe, total=req.limit)
 
 
+@app.get("/")
+async def root():
+    """Open straight to the dashboard (nice landing for Render / HF Spaces)."""
+    from fastapi.responses import RedirectResponse
+
+    return RedirectResponse(url="/dashboard/")
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     service: AnalysisService = app.state.service
