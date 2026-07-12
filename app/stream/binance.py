@@ -118,11 +118,14 @@ class BinanceClient:
                     yield candle
                 return
 
-    async def _poll_candles(self, symbol: str, interval: str) -> AsyncIterator[Candle]:
-        """Poll the REST mirror for the latest candle (~every 4s) as a WS fallback.
+    async def _poll_candles(
+        self, symbol: str, interval: str, poll_secs: float = 1.5
+    ) -> AsyncIterator[Candle]:
+        """Poll the REST mirror for the latest candle as a WebSocket fallback.
 
-        Yields the forming candle (``closed=False``) each poll, and the just-closed
-        candle (``closed=True``) once when a new candle begins.
+        Yields the forming candle (``closed=False``) each poll — so the chart keeps
+        ticking — and the just-closed candle (``closed=True``) once a new one begins.
+        Polls fast (1.5s) so the live chart feels real-time even without the WS.
         """
         last_open = None
         while True:
@@ -139,7 +142,9 @@ class BinanceClient:
                     yield forming
             except Exception as exc:  # noqa: BLE001 - network hiccup, keep polling
                 logger.warning("poll fetch failed: %s", exc)
-            await asyncio.sleep(4.0)
+                await asyncio.sleep(3.0)
+                continue
+            await asyncio.sleep(poll_secs)
 
     @staticmethod
     def _row_to_candle(r: list) -> Candle:

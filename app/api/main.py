@@ -55,9 +55,15 @@ async def lifespan(app: FastAPI):
     from app.tracking.tracker import CallStore
 
     app.state.calls = CallStore()
-    app.state.autolog = False  # hands-free logging of the AI's own picks
+    # Hands-free AI logging — config lives on the server, so it keeps running
+    # even when every browser tab is closed.
+    app.state.autolog = {"enabled": False, "symbol": "BTCUSDT", "timeframe": "1m"}
+    autolog_task = asyncio.create_task(_autolog_loop())
     logger.info("Aegis API ready (v%s, device=%s)", __version__, settings.resolve_device())
-    yield
+    try:
+        yield
+    finally:
+        autolog_task.cancel()
 
 
 app = FastAPI(title="Aegis Trading AI", version=__version__, lifespan=lifespan)
@@ -215,7 +221,11 @@ async def record_call(req: RecordCallRequest):
 
 
 def _record_ai_call(symbol: str, timeframe: str, candles: list[Candle]) -> str | None:
-    """Log the AI's own pick for the latest candle (deduped by candle time)."""
+    """Log the AI's own pick for the latest candle.
+
+    Duplicates are rejected by the database itself (one AI pick per candle per
+    market), so this is safe to call as often as we like.
+    """
     import uuid
     from datetime import datetime, timezone
 
@@ -226,21 +236,17 @@ def _record_ai_call(symbol: str, timeframe: str, candles: list[Candle]) -> str |
     pick = service.ai_paper_trade(df)
     if pick is None:
         return None
-    clicked_time = int(candles[-1].open_time.timestamp())
-    # Dedupe: one AI call per candle per market.
-    for c in app.state.calls.all():
-        if c.source == "ai" and c.symbol == symbol.upper() and c.timeframe == timeframe and c.clicked_time == clicked_time:
-            return None
     call = TrackedCall(
         id=uuid.uuid4().hex[:8],
         created_at=datetime.now(tz=timezone.utc).isoformat(),
         symbol=symbol.upper(), timeframe=timeframe,
         side=pick["side"], entry=pick["entry"], stop=pick["stop"],
         tp1=pick["tp1"], tp2=pick["tp2"],
-        clicked_time=clicked_time, clicked_price=pick["entry"], source="ai",
+        clicked_time=int(candles[-1].open_time.timestamp()),
+        clicked_price=pick["entry"], source="ai",
     )
-    app.state.calls.add(call)
-    return call.id
+    stored = app.state.calls.add(call)      # None if the DB deduped it
+    return stored.id if stored else None
 
 
 @app.post("/calls/ai")
@@ -251,16 +257,61 @@ async def log_ai_pick(symbol: str = Query(...), timeframe: str = "1h"):
     return {"ok": cid is not None, "id": cid}
 
 
+def _tf_seconds(tf: str) -> int:
+    n = int("".join(c for c in tf if c.isdigit()) or 1)
+    if tf.endswith("h"):
+        return n * 3600
+    if tf.endswith("d"):
+        return n * 86400
+    return n * 60
+
+
+async def _autolog_loop() -> None:
+    """Server-side auto-log: keeps predicting even with NO browser open.
+
+    Runs for the whole life of the server. When auto-log is on it logs the AI's
+    pick for the configured market; the DB's one-pick-per-candle rule means we
+    can retry freely without creating duplicates.
+    """
+    while True:
+        sleep_s = 10
+        try:
+            cfg = app.state.autolog
+            if cfg.get("enabled"):
+                symbol, tf = cfg["symbol"], cfg["timeframe"]
+                candles = await app.state.binance.fetch_history(symbol, tf, total=300)
+                cid = _record_ai_call(symbol, tf, candles)
+                if cid:
+                    logger.info("Auto-logged AI pick %s (%s %s)", cid, symbol, tf)
+                # check about twice per candle; duplicates are dropped by the DB
+                sleep_s = max(20, _tf_seconds(tf) // 2)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - keep the loop alive
+            logger.warning("auto-log loop error: %s", exc)
+            sleep_s = 20
+        await asyncio.sleep(sleep_s)
+
+
 @app.post("/autolog")
-async def set_autolog(enabled: bool = Query(...)):
-    """Turn hands-free AI auto-logging on/off (logs the AI's pick each candle close)."""
-    app.state.autolog = enabled
-    return {"autolog": enabled}
+async def set_autolog(
+    enabled: bool = Query(...),
+    symbol: str = Query("BTCUSDT"),
+    timeframe: str = Query("1m"),
+):
+    """Turn hands-free AI auto-logging on/off.
+
+    This runs on the SERVER, so it keeps logging the AI's picks even after you
+    close the website.
+    """
+    app.state.autolog = {"enabled": enabled, "symbol": symbol.upper(), "timeframe": timeframe}
+    logger.info("Auto-log %s for %s %s", "ON" if enabled else "OFF", symbol.upper(), timeframe)
+    return app.state.autolog
 
 
 @app.get("/autolog")
 async def get_autolog():
-    return {"autolog": getattr(app.state, "autolog", False)}
+    return getattr(app.state, "autolog", {"enabled": False, "symbol": "BTCUSDT", "timeframe": "1m"})
 
 
 @app.get("/calls")
@@ -436,10 +487,8 @@ async def ws_signals(ws: WebSocket, symbol: str = "BTCUSDT", timeframe: str = "1
             try:
                 signal = service.analyze(df, symbol, client.name, timeframe)
                 _RECENT_SIGNALS.appendleft(signal)
-                # Hands-free: log the AI's own pick BEFORE sending the update, so the
-                # dashboard's refresh (triggered by this message) already sees it.
-                if getattr(app.state, "autolog", False):
-                    _record_ai_call(symbol, timeframe, buffer[-300:])
+                # NB: auto-logging is handled by the server-side _autolog_loop, so it
+                # keeps running even with no browser connected. Nothing to do here.
                 await ws.send_json({"type": "signal", "signal": signal.model_dump(mode="json")})
             except ValueError:
                 continue

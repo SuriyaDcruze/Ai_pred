@@ -71,8 +71,17 @@
     .calls-head select { border-color:#3b82f6; }
     .winrate { font-weight:700; font-size:14px; }
     .scoreboard { text-align:center; font-size:15px; font-weight:700; padding:10px 14px; border-bottom:1px solid #1c2127; background:#0b1016; }
-    .autolog-off { background:#2a313a !important; color:#9aa4af !important; border-color:#3a424d !important; font-weight:700; }
-    .autolog-on  { background:#26a69a !important; color:#04120f !important; border-color:#5fd3bd !important; font-weight:700; box-shadow:0 0 10px rgba(38,166,154,.7); animation:pulse 1.6s infinite; }
+    /* real ON/OFF toggle switch */
+    .switch { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+    .switch input { display:none; }
+    .switch .slider { position:relative; width:44px; height:23px; border-radius:23px; background:#3a424d;
+      transition:background .2s; flex:none; }
+    .switch .slider::before { content:""; position:absolute; top:3px; left:3px; width:17px; height:17px;
+      border-radius:50%; background:#c9d1d9; transition:transform .2s, background .2s; }
+    .switch input:checked + .slider { background:#26a69a; box-shadow:0 0 9px rgba(38,166,154,.75); }
+    .switch input:checked + .slider::before { transform:translateX(21px); background:#04120f; }
+    .sw-label { font-size:12px; font-weight:700; color:#9aa4af; white-space:nowrap; }
+    .switch input:checked ~ .sw-label { color:#5fd3bd; }
     .calls-cols { display:flex; gap:1px; background:#1c2127; }
     .calls-col { flex:1; background:#0e1216; min-width:0; }
     .col-head { padding:8px 14px; font-size:12px; color:#c9d1d9; border-bottom:1px solid #1c2127; }
@@ -147,7 +156,11 @@
         <option value="4h">4 hours</option>
         <option value="1d">1 day</option>
       </select>
-      <button id="autologBtn" class="autolog-off" onclick="toggleAutolog()">⚪ Auto-log AI: OFF  (click to start)</button>
+      <label class="switch" title="When ON, the AI keeps predicting on the server — even if you close this website">
+        <input type="checkbox" id="autologSw" onchange="toggleAutolog()">
+        <span class="slider"></span>
+        <span id="autologLbl" class="sw-label">🤖 Auto-log AI: OFF</span>
+      </label>
       <button onclick="logAiPick()">🤖 Log AI pick now</button>
       <span style="margin-left:auto"></span>
       <button onclick="undoLast()">↶ Undo last</button>
@@ -246,8 +259,10 @@ function connect() {
   curSymbol = document.getElementById('symbol').value.toUpperCase();
   curTf = document.getElementById('tf').value.trim();
   document.getElementById('chatctx').textContent = `· ${curSymbol} ${curTf}`;
-  // if auto-log is on, restart its timer for the new coin/timeframe
-  if (document.getElementById('autologBtn')?.classList.contains('autolog-on')) startAutolog();
+  // if auto-log is on, point the server's auto-logger at the new coin/timeframe
+  if (document.getElementById('autologSw')?.checked) {
+    fetch(`/autolog?enabled=true&symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' }).catch(() => {});
+  }
   loadCalls();
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   setDot('', 'connecting…');
@@ -502,52 +517,32 @@ async function logAiPick() {
   loadCalls();
 }
 
-function setAutologBtn(on) {
-  const btn = document.getElementById('autologBtn');
-  if (!btn) return;
-  btn.className = on ? 'autolog-on' : 'autolog-off';
-  btn.textContent = on ? '🟢 Auto-log AI: ON  (click to stop)' : '⚪ Auto-log AI: OFF  (click to start)';
+/* ---- auto-log lives on the SERVER: it keeps predicting even if you close this page ---- */
+function setAutologUI(on) {
+  const sw = document.getElementById('autologSw');
+  const lbl = document.getElementById('autologLbl');
+  if (sw) sw.checked = !!on;
+  if (lbl) lbl.textContent = on ? '🤖 Auto-log AI: ON' : '🤖 Auto-log AI: OFF';
 }
-
-/* ---- auto-log runs on a TIMER (independent of the WebSocket) ---- */
-let autologTimer = null;
-function tfSeconds(tf) {
-  const n = parseInt(tf) || 1;
-  return tf.endsWith('h') ? n * 3600 : tf.endsWith('d') ? n * 86400 : n * 60;
-}
-async function logOneAiPick() {
-  try {
-    await fetch(`/calls/ai?symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' });
-    loadCalls();
-  } catch (e) { /* ignore */ }
-}
-function startAutolog() {
-  clearInterval(autologTimer);
-  // one fresh AI prediction per candle (server dedupes duplicates within a candle)
-  const ms = Math.max(30, tfSeconds(curTf)) * 1000;
-  autologTimer = setInterval(logOneAiPick, ms);
-}
-function stopAutolog() { clearInterval(autologTimer); autologTimer = null; }
 
 async function toggleAutolog() {
-  const turningOn = document.getElementById('autologBtn').classList.contains('autolog-off');
-  await fetch(`/autolog?enabled=${turningOn}`, { method: 'POST' });
-  setAutologBtn(turningOn);
-  if (turningOn) {
-    await logOneAiPick();                 // log one immediately
-    startAutolog();                       // then one per candle, via timer
-    addMsg(`🤖 Auto-log ON — the AI now predicts & logs one pick every ${curTf}. Statuses update by themselves.`, 'bot');
+  const on = document.getElementById('autologSw').checked;
+  await fetch(`/autolog?enabled=${on}&symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' });
+  setAutologUI(on);
+  if (on) {
+    await fetch(`/calls/ai?symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' }); // first pick now
+    addMsg(`🤖 Auto-log ON — the AI now predicts <b>${curSymbol}</b> every <b>${curTf}</b>, on the server. ` +
+           `It keeps logging even if you close this website.`, 'bot');
+    loadCalls();
   } else {
-    stopAutolog();
-    addMsg('🤖 Auto-log OFF.', 'bot');
+    addMsg('🤖 Auto-log OFF — the AI has stopped logging.', 'bot');
   }
 }
 
 async function syncAutolog() {
   try {
-    const on = (await (await fetch('/autolog')).json()).autolog;
-    setAutologBtn(on);
-    if (on) startAutolog();
+    const cfg = await (await fetch('/autolog')).json();
+    setAutologUI(cfg.enabled);
   } catch (e) { /* ignore */ }
 }
 syncAutolog();
