@@ -29,6 +29,9 @@ class Confirmations:
     def all_pass(self) -> bool:
         return all([self.trend, self.volume, self.momentum, self.structure, self.candlestick])
 
+    def passing_count(self) -> int:
+        return sum([self.trend, self.volume, self.momentum, self.structure, self.candlestick])
+
     def failing(self) -> list[str]:
         names = {
             "trend": self.trend,
@@ -53,9 +56,16 @@ class Decision:
 
 
 class DecisionEngine:
-    def __init__(self, min_confidence: float | None = None):
+    def __init__(
+        self,
+        min_confidence: float | None = None,
+        min_confirmations: int | None = None,
+    ):
         self.min_confidence = (
             min_confidence if min_confidence is not None else settings.min_confidence
+        )
+        self.min_confirmations = (
+            min_confirmations if min_confirmations is not None else settings.min_confirmations
         )
 
     def evaluate(
@@ -120,7 +130,18 @@ class DecisionEngine:
         self._explain(reasons, risks, row, prediction, bias, conf)
 
         # ---- Gate ----
-        passes = conf.all_pass() and prediction.confidence >= self.min_confidence
+        #
+        # This used to demand unanimity: all five confirmations AND confidence.
+        # Measured on 500 live BTC 1m candles, that fired ZERO times — each
+        # confirmation fails 51-72% of the time on its own, so ANDing five of them
+        # together with a confidence gate the model can't reach makes the door
+        # mathematically unopenable. A gate that never opens isn't strict, it's broken.
+        #
+        # So: require a MAJORITY of confirmations (a confluence score) rather than
+        # all of them. This is a real loosening of standards, and it is only
+        # defensible because `learning_mode` is on and the dashboard says so loudly.
+        n_pass = conf.passing_count()
+        passes = n_pass >= self.min_confirmations and prediction.confidence >= self.min_confidence
         side = bias if passes else Side.WAIT
         if not passes and conf.failing():
             risks.append(f"Unconfirmed: {', '.join(conf.failing())}.")

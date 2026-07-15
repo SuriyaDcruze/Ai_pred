@@ -19,3 +19,10 @@ htmlcov/
 /data/
 aegis_project.zip
 pdf/
+
+# scratch experiments — never commit
+artifacts/tmp/
+artifacts/model_fair.pt
+artifacts/*.bak-*.pt
+artifacts/model_challenger.pt
+artifacts/retrain_history.jsonl

@@ -36,7 +36,10 @@ and lets you **forward-test the AI against yourself** on live data.
 | Beginner-friendly chat assistant (+ optional Claude LLM) | ✅ | `app/chat/` |
 | **Forward-testing tracker** (You vs AI, live win rate) | ✅ | `app/tracking/tracker.py` |
 | Live Binance stream (geo-block fallback built in) | ✅ | `app/stream/binance.py` |
-| Live dashboard (chart, chat, tap-to-trade, scoreboard) | ✅ | `app/dashboard/` |
+| **Stocks** — Apple, Tesla, ITC, Reliance… via Yahoo (no API key) | ✅ | `app/stream/yahoo.py` |
+| **News + sentiment** (free RSS, finance lexicon) | ✅ | `app/features/sentiment.py` |
+| **My Rules** — your checklist, enforced before every trade | ✅ | `app/decision/rules.py` |
+| Live dashboard (chart, chat, tap-to-trade, scoreboard, news) | ✅ | `app/dashboard/` |
 | REST + WebSocket API | ✅ | `app/api/main.py` |
 | Colab GPU training notebook | ✅ | `colab/` |
 | Render deployment | ✅ | `render.yaml`, `docs/DEPLOY_RENDER.md` |
@@ -78,6 +81,21 @@ See [`docs/DEPLOY_RENDER.md`](docs/DEPLOY_RENDER.md).
 - **📓 Track Record + 🏆 scoreboard** — every call is scored WIN/LOSS against real
   future price (no lookahead), and a live head-to-head shows **You vs the AI**.
 - **🤖 Auto-log** — let the AI log its own picks hands-free to build its record.
+- **📰 News & sentiment** — free headlines, scored bullish/bearish. This is the only
+  input on the platform that is *not* derived from price, so it can move before the
+  chart does.
+- **✅ My Rules** — your own checklist (min confidence, never fight the trend, min
+  R:R, don't buy the top, daily trade cap…), scored against the live setup and
+  persisted in SQLite. Read the note below — it matters.
+
+### A word on "My Rules"
+
+It is a **discipline** feature, not an accuracy feature, and the difference is the
+whole point. It will not make the model smarter. What it does is stop you taking
+the trades you already know you shouldn't: the 30%-confidence ones, the ones
+against the trend, the fifth revenge trade of a losing day. When an edge is thin —
+and ours is (see below) — being undisciplined is the fastest way to give it away.
+That is worth more than a percentage point of model accuracy.
 
 ---
 
@@ -104,8 +122,14 @@ live data → stream/ → indicators/ + features/ (incl. candlesticks) → Featu
              decision/engine.py  ◀────────────  risk/manager.py
                     │
                     ▼
-        Signal (BUY / SELL / WAIT) → api/ → dashboard/ → tracking/ (forward-test)
+        Signal (BUY / SELL / WAIT) → decision/rules.py (your checklist)
+                                            │
+                                            ▼
+                              api/ → dashboard/ → tracking/ (forward-test)
 ```
+
+Two inputs sit outside that price-derived pipeline: **`stream/yahoo.py`** (stocks —
+same model, same dashboard, no API key) and **`features/sentiment.py`** (news).
 
 ## Safety rails (hard-coded)
 - No signal unless confidence ≥ 80%, R:R ≥ 2, and all confirmations agree → else WAIT.

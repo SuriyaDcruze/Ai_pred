@@ -220,12 +220,43 @@ PATTERN_LESSONS: list[dict] = [
 
 
 def lookup_pattern(text: str) -> dict | None:
-    """Find which candlestick pattern (if any) the user is asking about."""
+    """Find which candlestick pattern (if any) the user is asking about.
+
+    Hand-written lessons win, because they teach the pattern properly. Anything
+    else in the extended library still gets an honest one-liner rather than a
+    shrug — the user asked about a real pattern, so answer them.
+    """
     t = (text or "").lower()
     for lesson in PATTERN_LESSONS:
         if any(k in t for k in lesson["keys"]):
             return lesson
-    return None
+
+    from app.features.patterns_extra import EXTENDED_PATTERN_INFO
+
+    best: tuple[int, dict] | None = None
+    for col, (name, desc, direction, rarity) in EXTENDED_PATTERN_INFO.items():
+        # "Abandoned Baby (Bullish)" -> "abandoned baby"; "Bullish Marubozu" -> also
+        # plain "marubozu", so asking for the pattern by its bare name works.
+        base = name.split("(")[0].strip().lower()
+        keys = {base}
+        for prefix in ("bullish ", "bearish ", "upside ", "downside ", "identical "):
+            if base.startswith(prefix):
+                keys.add(base[len(prefix):])
+        key = next((k for k in sorted(keys, key=len, reverse=True) if k and k in t), "")
+        if key:
+            arrow = {"bull": "a BUY signal 🟢", "bear": "a SELL signal 🔴",
+                     "neutral": "a WAIT signal ⚪"}[direction]
+            note = "" if rarity == "common" else (
+                f"\n\nHeads up: this one is **{rarity}** — it fires seldom, so don't wait around for it."
+            )
+            lesson = {
+                "keys": [key], "cols": [col], "title": name,
+                "body": f"{desc.capitalize()} It's {arrow}.{note}",
+            }
+            # prefer the longest name matched ("morning doji star" over "doji")
+            if best is None or len(key) > best[0]:
+                best = (len(key), lesson)
+    return best[1] if best else None
 
 
 def candlestick_confluence(features: pd.DataFrame, sr_tolerance: float = 0.004) -> pd.Series:

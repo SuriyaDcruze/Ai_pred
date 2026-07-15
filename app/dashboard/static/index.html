@@ -13,6 +13,12 @@
     header h1 { font-size:16px; margin:0; font-weight:600; }
     .controls input, .controls button, .controls select { background:#151a21; border:1px solid #2a313a; color:#e6e6e6; border-radius:6px; padding:6px 10px; }
     .controls button, button { cursor:pointer; }
+    .risk-banner { background:linear-gradient(90deg,#5a1a1a,#7a2020); border-bottom:2px solid #ef5350;
+                   color:#ffe9e9; padding:9px 16px; font-size:13px; text-align:center; line-height:1.45; }
+    .risk-banner b { color:#fff; letter-spacing:.4px; }
+    .risk-banner .sub { color:#ffc9c9; font-size:12px; }
+    .mini { background:#151a21; border:1px solid #2a313a; color:#c9d1d9; border-radius:8px; padding:3px 9px; font-size:11px; }
+    .mini:hover { border-color:#3d4855; color:#e6edf3; }
     .live { display:flex; align-items:center; gap:6px; font-size:12px; color:#7a828c; }
     .dot { width:9px; height:9px; border-radius:50%; background:#555; }
     .dot.on { background:#26a69a; box-shadow:0 0 8px #26a69a; animation:pulse 1.4s infinite; }
@@ -94,22 +100,42 @@
   </style>
 </head>
 <body>
+  <div id="riskBanner" class="risk-banner" style="display:none"></div>
   <header>
     <h1>⚡ Aegis Trading AI</h1>
     <div class="controls">
-      <select id="symbol" onchange="connect()" title="Cryptocurrency">
-        <option value="BTCUSDT">₿ Bitcoin (BTC)</option>
-        <option value="ETHUSDT">Ξ Ethereum (ETH)</option>
-        <option value="BNBUSDT">BNB</option>
-        <option value="SOLUSDT">Solana (SOL)</option>
-        <option value="XRPUSDT">XRP</option>
-        <option value="ADAUSDT">Cardano (ADA)</option>
-        <option value="DOGEUSDT">Dogecoin (DOGE)</option>
-        <option value="AVAXUSDT">Avalanche (AVAX)</option>
-        <option value="LINKUSDT">Chainlink (LINK)</option>
-        <option value="LTCUSDT">Litecoin (LTC)</option>
-        <option value="DOTUSDT">Polkadot (DOT)</option>
-        <option value="TRXUSDT">TRON (TRX)</option>
+      <select id="symbol" onchange="connect()" title="Crypto or stock">
+        <optgroup label="₿ Crypto (24/7, live)">
+          <option value="BTCUSDT">Bitcoin (BTC)</option>
+          <option value="ETHUSDT">Ethereum (ETH)</option>
+          <option value="BNBUSDT">BNB</option>
+          <option value="SOLUSDT">Solana (SOL)</option>
+          <option value="XRPUSDT">XRP</option>
+          <option value="ADAUSDT">Cardano (ADA)</option>
+          <option value="DOGEUSDT">Dogecoin (DOGE)</option>
+          <option value="AVAXUSDT">Avalanche (AVAX)</option>
+          <option value="LINKUSDT">Chainlink (LINK)</option>
+          <option value="LTCUSDT">Litecoin (LTC)</option>
+          <option value="DOTUSDT">Polkadot (DOT)</option>
+          <option value="TRXUSDT">TRON (TRX)</option>
+        </optgroup>
+        <optgroup label="📈 US Stocks (market hours, ~15m delayed)">
+          <option value="AAPL">Apple (AAPL)</option>
+          <option value="TSLA">Tesla (TSLA)</option>
+          <option value="NVDA">NVIDIA (NVDA)</option>
+          <option value="MSFT">Microsoft (MSFT)</option>
+          <option value="AMZN">Amazon (AMZN)</option>
+          <option value="GOOGL">Alphabet (GOOGL)</option>
+          <option value="META">Meta (META)</option>
+        </optgroup>
+        <optgroup label="🇮🇳 India / NSE (market hours, delayed)">
+          <option value="ITC.NS">ITC</option>
+          <option value="RELIANCE.NS">Reliance</option>
+          <option value="TCS.NS">TCS</option>
+          <option value="INFY.NS">Infosys</option>
+          <option value="HDFCBANK.NS">HDFC Bank</option>
+          <option value="TATAMOTORS.NS">Tata Motors</option>
+        </optgroup>
       </select>
       <button onclick="connect()">Go Live</button>
     </div>
@@ -138,7 +164,21 @@
       </div>
       <div class="hint">💡 Tap anywhere on the chart — a BUY / SELL choice pops up right there. Pick one; the AI picks its own; watch who wins.</div>
     </div>
-    <div class="card" id="panel"><div class="muted">Connecting to live feed…</div></div>
+    <div>
+      <div class="card" id="panel"><div class="muted">Connecting to live feed…</div></div>
+      <div class="card" id="rulesCard" style="margin-top:12px">
+        <h4 style="margin-top:0;display:flex;align-items:center;gap:8px">
+          ✅ My Rules
+          <span class="muted" style="font-weight:400;font-size:12px">your checklist, enforced</span>
+          <button id="rulesEdit" class="mini" style="margin-left:auto" onclick="toggleRulesEdit()">⚙️ Edit</button>
+        </h4>
+        <div id="rulesBody" class="muted">Checking your rules…</div>
+      </div>
+      <div class="card" id="newsCard" style="margin-top:12px">
+        <h4 style="margin-top:0">📰 News &amp; Sentiment</h4>
+        <div id="newsBody" class="muted">Loading headlines…</div>
+      </div>
+    </div>
   </div>
 
   <div class="calls" id="callsCard">
@@ -229,6 +269,109 @@ function refreshMarkers() {
 function applyFilters() { drawMarkers(lastLevels); refreshMarkers(); }
 function onPatternToggle() { loadPatterns(); }
 
+/* ---- news + sentiment: the one signal NOT derived from price ---- */
+async function loadNews() {
+  const body = document.getElementById('newsBody');
+  if (!body) return;
+  try {
+    const n = await (await fetch(`/news?symbol=${curSymbol}&limit=6`)).json();
+    if (!n.headlines || !n.headlines.length) {
+      body.innerHTML = '<div class="muted">No recent headlines for this symbol.</div>';
+      return;
+    }
+    const col = n.score >= 0.12 ? '#26a69a' : n.score <= -0.12 ? '#ef5350' : '#c9a227';
+    const pct = Math.round(Math.abs(n.score) * 100);
+    body.innerHTML = `
+      <div style="font-weight:700;color:${col};font-size:14px;margin-bottom:4px">
+        ${n.emoji} ${n.label} <span class="muted" style="font-weight:400">(${n.score >= 0 ? '+' : ''}${n.score})</span>
+      </div>
+      <div class="bar"><span style="width:${pct}%;background:${col}"></span></div>
+      <ul style="padding-left:16px">${n.headlines.map(h => {
+        const c = h.score > 0.05 ? '#5fd3bd' : h.score < -0.05 ? '#ff8b8b' : '#9aa4af';
+        const tag = h.score > 0.05 ? '▲' : h.score < -0.05 ? '▼' : '•';
+        return `<li style="margin-bottom:5px"><span style="color:${c};font-weight:700">${tag}</span>
+          <a href="${h.link}" target="_blank" style="color:#b8c0c9;text-decoration:none">${h.title}</a></li>`;
+      }).join('')}</ul>
+      <div class="muted" style="font-size:11px">Headlines can move price before the chart reacts — but sentiment is a hint, not a guarantee.</div>`;
+  } catch (e) {
+    body.innerHTML = '<div class="muted">Could not load news.</div>';
+  }
+}
+
+/* ---- The honest banner. Driven by config, so it can't drift out of sync. ---- */
+async function loadRiskNotice() {
+  const el = document.getElementById('riskBanner');
+  try {
+    const j = await (await fetch('/risk-notice')).json();
+    if (!j.learning_mode) { el.style.display = 'none'; return; }
+    el.innerHTML = `<b>⚠️ ${j.headline}</b><div class="sub">${j.detail}</div>`;
+    el.style.display = 'block';
+  } catch (e) { /* a missing banner must never break the dashboard */ }
+}
+
+/* ---- My Rules: your checklist, enforced. Discipline, not prediction. ---- */
+let rulesEditing = false;
+function toggleRulesEdit() { rulesEditing = !rulesEditing; loadRules(); }
+
+async function setRule(id, enabled, value) {
+  const q = new URLSearchParams({ rule_id: id });
+  if (enabled !== null && enabled !== undefined) q.set('enabled', enabled);
+  if (value !== null && value !== undefined && value !== '') q.set('value', value);
+  await fetch('/rules?' + q.toString(), { method: 'POST' });
+  loadRules();
+}
+async function resetRules() { await fetch('/rules/reset', { method: 'POST' }); loadRules(); }
+
+async function loadRules() {
+  const body = document.getElementById('rulesBody');
+  if (!body) return;
+  document.getElementById('rulesEdit').textContent = rulesEditing ? '✔ Done' : '⚙️ Edit';
+
+  if (rulesEditing) {                                  // ---- settings view ----
+    try {
+      const j = await (await fetch('/rules')).json();
+      body.innerHTML = j.rules.map(r => `
+        <div style="padding:7px 0;border-bottom:1px solid #1e2732">
+          <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+            <input type="checkbox" ${r.enabled ? 'checked' : ''} style="margin-top:3px"
+                   onchange="setRule('${r.id}', this.checked, null)">
+            <span>
+              <span style="color:#e6edf3;font-weight:600">${r.label}</span>
+              ${r.tweakable ? `<input type="number" value="${r.value}" step="0.1" title="Your threshold"
+                   style="width:62px;margin-left:6px;background:#0d1117;border:1px solid #2a3440;color:#e6edf3;border-radius:5px;padding:1px 5px"
+                   onchange="setRule('${r.id}', null, this.value)"> <span class="muted">${r.unit}</span>` : ''}
+              <div class="muted" style="font-size:11px;margin-top:2px">${r.why}</div>
+            </span>
+          </label>
+        </div>`).join('') +
+        `<button class="mini" style="margin-top:8px" onclick="resetRules()">↺ Reset to sensible defaults</button>`;
+    } catch (e) { body.innerHTML = '<div class="muted">Could not load your rules.</div>'; }
+    return;
+  }
+
+  try {                                                // ---- verdict view ----
+    const j = await (await fetch(`/rules/check?symbol=${curSymbol}&timeframe=${curTf}`)).json();
+    if (!j.results || !j.results.length) { body.innerHTML = '<div class="muted">No rules switched on. Hit ⚙️ Edit.</div>'; return; }
+    const waiting = j.has_trade === false;
+    const ok = j.obeys;
+    const col = waiting ? '#c9a227' : ok ? '#26a69a' : '#ef5350';
+    const dot = waiting ? '⏸' : ok ? '🟢' : '🔴';
+    const icon = { pass: '<span style="color:#26a69a">✔</span>', fail: '<span style="color:#ef5350">✘</span>', 'n/a': '<span class="muted">–</span>' };
+    body.innerHTML = `
+      <div style="font-weight:700;color:${col};font-size:14px">${dot} ${j.verdict}</div>
+      <div class="muted" style="font-size:12px;margin:3px 0 8px">${j.advice}</div>
+      ${j.results.filter(r => r.enabled).map(r => `
+        <div style="display:flex;gap:7px;padding:4px 0;align-items:flex-start;font-size:12px">
+          <span style="font-weight:700">${icon[r.status]}</span>
+          <span>
+            <span style="color:${r.status === 'fail' ? '#ff8b8b' : '#b8c0c9'}">${r.label}</span>
+            <div class="muted" style="font-size:11px">${r.detail}</div>
+          </span>
+        </div>`).join('')}
+      <div class="muted" style="font-size:11px;margin-top:6px">This is a <b>discipline</b> tool. It won't make the AI smarter — it stops you taking the trades you already know you shouldn't.</div>`;
+  } catch (e) { body.innerHTML = '<div class="muted">Could not check your rules.</div>'; }
+}
+
 async function loadPatterns() {
   if (!tg('tgPatterns')) { patternMarkers = []; refreshMarkers(); return; }
   const mode = document.getElementById('patFilter').value;
@@ -264,6 +407,9 @@ function connect() {
     fetch(`/autolog?enabled=true&symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' }).catch(() => {});
   }
   loadCalls();
+  loadNews();
+  loadRules();
+  loadRiskNotice();
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   setDot('', 'connecting…');
   ws = new WebSocket(`${proto}://${location.host}/ws/signals?symbol=${curSymbol}&timeframe=${curTf}`);
@@ -549,6 +695,10 @@ syncAutolog();
 
 /* keep the log + graph fresh automatically — re-score every 8s, no refresh needed */
 setInterval(loadCalls, 8000);
+/* headlines change slowly — refresh every 3 minutes */
+setInterval(loadNews, 180000);
+/* re-score your checklist against the live setup every 20s */
+setInterval(() => { if (!rulesEditing) loadRules(); }, 20000);
 
 async function clearCalls() {
   await fetch('/calls', { method: 'DELETE' });

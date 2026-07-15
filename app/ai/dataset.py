@@ -28,6 +28,7 @@ def make_labels(
     barrier_k: float = 1.0,
     vol_window: int = 20,
     deadband_k: float = 0.5,  # kept for backward compat; unused by triple-barrier
+    cost_pct: float = 0.0,
 ) -> dict[str, np.ndarray]:
     """Return causal supervised targets aligned to each bar ``t``.
 
@@ -37,6 +38,19 @@ def make_labels(
     *first* — up (0), down (1), or neither/time-out (2). This matches the real
     trading question ("does it hit my target before my stop?") and is far more
     learnable than a single next-candle up/down flip.
+
+    ``cost_pct`` makes the labels **cost-aware**, per the MASTER MODEL CONTEXT:
+
+        "A movement smaller than total estimated trading costs should not
+         automatically be labeled as a profitable directional opportunity."
+
+    Without it, in a quiet market the volatility barrier can sit *inside* the
+    spread+fees, and we cheerfully label a 0.02% wiggle as a tradeable UP. The
+    model then learns to predict moves it is impossible to profit from — it is
+    being trained to chase noise, and it will look accurate while losing money.
+    Setting ``cost_pct`` (round-trip fees + slippage, e.g. 0.0012 = 0.12%) floors
+    the barrier at the cost of trading, so only moves worth taking are labelled
+    directional. Everything else is NEUTRAL, which is the honest answer.
     """
     n = len(close)
     rel_close = np.full(n, np.nan)
@@ -62,6 +76,9 @@ def make_labels(
         # --- Triple-barrier direction label ---
         vol = roll_std[t] if not np.isnan(roll_std[t]) else 0.0
         b = barrier_k * vol
+        # Cost floor: a barrier tighter than the round-trip cost describes a move
+        # you cannot profit from, so never label it as one.
+        b = max(b, cost_pct)
         if b <= 0:
             direction[t] = 2
             continue

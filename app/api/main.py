@@ -32,6 +32,8 @@ from app.api.schemas import (
 from app.chat.assistant import TradingAssistant
 from app.config import settings
 from app.data.schemas import Candle, candles_to_frame
+from app.decision.rules import RuleStore, check_rules, trades_today
+from app.features.sentiment import fetch_news
 from app.service import AnalysisService
 from app.stream.binance import BinanceClient
 from app.utils.logging import get_logger
@@ -44,8 +46,11 @@ _RECENT_SIGNALS: deque = deque(maxlen=100)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.stream.yahoo import YahooClient
+
     app.state.service = AnalysisService()
-    app.state.binance = BinanceClient()
+    app.state.binance = BinanceClient()   # crypto
+    app.state.yahoo = YahooClient()       # stocks / ETFs / indices
     if settings.chat_llm:
         from app.chat.llm import LLMAssistant
 
@@ -55,6 +60,7 @@ async def lifespan(app: FastAPI):
     from app.tracking.tracker import CallStore
 
     app.state.calls = CallStore()
+    app.state.rules = RuleStore()          # your personal trading checklist
     # Hands-free AI logging — config lives on the server, so it keeps running
     # even when every browser tab is closed.
     app.state.autolog = {"enabled": False, "symbol": "BTCUSDT", "timeframe": "1m"}
@@ -75,11 +81,22 @@ app.add_middleware(
 )
 
 
+def _provider(symbol: str):
+    """Pick the data source for a symbol.
+
+    Crypto pairs (…USDT) come from Binance; everything else (AAPL, ITC.NS, TSLA…)
+    is a stock and comes from Yahoo Finance. Both expose the same interface, so
+    nothing downstream cares which one it got.
+    """
+    from app.stream.yahoo import YahooClient
+
+    return app.state.yahoo if YahooClient.is_stock(symbol) else app.state.binance
+
+
 async def _get_candles(req: AnalyzeRequest) -> list[Candle]:
     if req.candles:
         return req.candles
-    client: BinanceClient = app.state.binance
-    return await client.fetch_history(req.symbol, req.timeframe, total=req.limit)
+    return await _provider(req.symbol).fetch_history(req.symbol, req.timeframe, total=req.limit)
 
 
 @app.get("/")
@@ -105,8 +122,7 @@ async def health() -> HealthResponse:
 
 @app.get("/market")
 async def market(symbol: str = Query(...), timeframe: str = "1m"):
-    client: BinanceClient = app.state.binance
-    candles = await client.fetch_klines(symbol, timeframe, limit=1)
+    candles = await _provider(symbol).fetch_klines(symbol, timeframe, limit=1)
     if not candles:
         raise HTTPException(404, f"No market data for {symbol}")
     c = candles[-1]
@@ -115,8 +131,7 @@ async def market(symbol: str = Query(...), timeframe: str = "1m"):
 
 @app.get("/history")
 async def history(symbol: str = Query(...), timeframe: str = "1h", limit: int = Query(300, ge=1, le=1000)):
-    client: BinanceClient = app.state.binance
-    candles = await client.fetch_history(symbol, timeframe, total=limit)
+    candles = await _provider(symbol).fetch_history(symbol, timeframe, total=limit)
     return {"symbol": symbol.upper(), "timeframe": timeframe, "candles": candles}
 
 
@@ -130,7 +145,108 @@ async def analyze(req: AnalyzeRequest):
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
     _RECENT_SIGNALS.appendleft(signal)
-    return {"signal": signal}
+    checklist = await _checklist_for(signal, df)
+    return {"signal": signal, "rules": checklist}
+
+
+async def _checklist_for(signal, df: pd.DataFrame) -> dict:
+    """Score a signal against the user's own rules. Never fatal — a broken rule
+    must not cost you the signal."""
+    try:
+        features = service_features(df)
+        score = None
+        if any(r["id"] == "news_agrees" and r["enabled"] for r in app.state.rules.catalogue()):
+            score = (await fetch_news(signal.symbol, limit=6)).score
+        verdict = check_rules(
+            signal,
+            features,
+            app.state.rules,
+            news_score=score,
+            trades_today_count=trades_today(app.state.calls.all()),
+        )
+        return {
+            "verdict": verdict.verdict,
+            "advice": verdict.advice,
+            "obeys": verdict.obeys_rules,
+            "has_trade": verdict.has_trade,
+            "passed": verdict.passed,
+            "failed": verdict.failed,
+            "results": [vars(r) for r in verdict.results],
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("rule check failed: %s", exc)
+        return {}
+
+
+def service_features(df: pd.DataFrame) -> pd.DataFrame:
+    return app.state.service.feature_builder.build_frame(df)
+
+
+@app.get("/risk-notice")
+async def risk_notice():
+    """The honest state of the model, for the dashboard banner.
+
+    This endpoint exists so the warning cannot drift out of sync with the config.
+    If someone lowers the gate, the banner appears automatically.
+    """
+    from app.config import MEASURED_ACCURACY, SAFE_CONFIDENCE, learning_mode
+
+    return {
+        "learning_mode": learning_mode(),
+        "min_confidence": settings.min_confidence,
+        "safe_confidence": SAFE_CONFIDENCE,
+        "measured_accuracy": MEASURED_ACCURACY,
+        "headline": "LEARNING MODE — do not trade real money on these signals",
+        "detail": (
+            f"The confidence gate is set to {settings.min_confidence:.0%}, below the "
+            f"{SAFE_CONFIDENCE:.0%} bar for tradeable conviction. Signals will fire, but they "
+            f"come from a model measured at {MEASURED_ACCURACY:.1%} directional accuracy — a coin "
+            f"flip. After fees, a coin flip is a losing strategy. Use these to learn and to "
+            f"forward-test, not to trade."
+        ),
+    }
+
+
+@app.get("/rules")
+async def get_rules():
+    """Your checklist and its current settings."""
+    return {"rules": app.state.rules.catalogue()}
+
+
+@app.post("/rules")
+async def set_rule(
+    rule_id: str = Query(..., description="Which rule to change"),
+    enabled: bool | None = Query(None),
+    value: float | None = Query(None),
+):
+    try:
+        app.state.rules.set(rule_id, enabled=enabled, value=value)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return {"rules": app.state.rules.catalogue()}
+
+
+@app.post("/rules/reset")
+async def reset_rules():
+    app.state.rules.reset()
+    return {"rules": app.state.rules.catalogue()}
+
+
+@app.get("/rules/check")
+async def check_current(symbol: str = Query(...), timeframe: str = "1m"):
+    """Score the live setup against your checklist — the dashboard polls this."""
+    service: AnalysisService = app.state.service
+    candles = await _provider(symbol).fetch_history(symbol.upper(), timeframe, total=300)
+    df = candles_to_frame(candles)
+    try:
+        signal = service.analyze(df, symbol.upper(), service_exchange(symbol), timeframe)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {
+        "decision": signal.decision,
+        "confidence": signal.confidence,
+        **(await _checklist_for(signal, df)),
+    }
 
 
 @app.post("/predict")
@@ -154,12 +270,12 @@ async def chat(req: ChatRequest):
     """Ask the trading assistant a question, optionally about a tapped price."""
     service: AnalysisService = app.state.service
     assistant: TradingAssistant = app.state.assistant
-    candles = req.candles or await app.state.binance.fetch_history(req.symbol, req.timeframe, total=req.limit)
+    candles = req.candles or await _provider(req.symbol).fetch_history(req.symbol, req.timeframe, total=req.limit)
     df = candles_to_frame(candles)
     if len(df) < 60:
         raise HTTPException(422, "Need at least 60 candles for context.")
     features = service.feature_builder.build_frame(df)
-    signal = service.analyze(df, req.symbol, service_exchange(), req.timeframe)
+    signal = service.analyze(df, req.symbol, service_exchange(req.symbol), req.timeframe)
     reply = assistant.respond(signal, df, features, req.message, hypo_price=req.price)
 
     # If this is a tap (a price), also compute the AI's OWN pick for that same
@@ -190,8 +306,28 @@ async def chat(req: ChatRequest):
     )
 
 
-def service_exchange() -> str:
-    return app.state.binance.name
+def service_exchange(symbol: str = "BTCUSDT") -> str:
+    return _provider(symbol).name
+
+
+@app.get("/news")
+async def news(symbol: str = Query(...), limit: int = Query(8, ge=1, le=20)):
+    """Recent headlines + sentiment for a symbol.
+
+    News is the one input that is NOT derived from price — it can move the market
+    before the chart reacts. Free source (Yahoo RSS), no API key.
+    """
+    s = await fetch_news(symbol, limit=limit)
+    return {
+        "symbol": s.symbol,
+        "score": s.score,
+        "label": s.label,
+        "emoji": s.mood_emoji,
+        "headlines": [
+            {"title": h.title, "link": h.link, "published": h.published, "score": h.score}
+            for h in s.headlines
+        ],
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -252,7 +388,7 @@ def _record_ai_call(symbol: str, timeframe: str, candles: list[Candle]) -> str |
 @app.post("/calls/ai")
 async def log_ai_pick(symbol: str = Query(...), timeframe: str = "1h"):
     """Immediately log the AI's current pick so you can watch it play out."""
-    candles = await app.state.binance.fetch_history(symbol, timeframe, total=300)
+    candles = await _provider(symbol).fetch_history(symbol, timeframe, total=300)
     cid = _record_ai_call(symbol, timeframe, candles)
     return {"ok": cid is not None, "id": cid}
 
@@ -279,7 +415,7 @@ async def _autolog_loop() -> None:
             cfg = app.state.autolog
             if cfg.get("enabled"):
                 symbol, tf = cfg["symbol"], cfg["timeframe"]
-                candles = await app.state.binance.fetch_history(symbol, tf, total=300)
+                candles = await _provider(symbol).fetch_history(symbol, tf, total=300)
                 cid = _record_ai_call(symbol, tf, candles)
                 if cid:
                     logger.info("Auto-logged AI pick %s (%s %s)", cid, symbol, tf)
@@ -328,7 +464,7 @@ async def list_calls():
 
     for (symbol, tf), group in by_market.items():
         try:
-            candles = await app.state.binance.fetch_history(symbol, tf, total=1000)
+            candles = await _provider(symbol).fetch_history(symbol, tf, total=1000)
         except Exception:  # noqa: BLE001 - network; leave calls as-is
             continue
         for call in group:
@@ -359,7 +495,7 @@ async def head_to_head(
     from app.tracking.tracker import TrackedCall
 
     service: AnalysisService = app.state.service
-    candles = await app.state.binance.fetch_history(symbol, timeframe, total=300)
+    candles = await _provider(symbol).fetch_history(symbol, timeframe, total=300)
     df = candles_to_frame(candles)
     features = service.feature_builder.build_frame(df)
     atr = float(features["atr"].iloc[-1]) if "atr" in features else entry * 0.01
@@ -427,24 +563,63 @@ async def export_calls():
 
 
 @app.get("/patterns")
-async def patterns(symbol: str = Query(...), timeframe: str = "1h", limit: int = Query(300, ge=60, le=1000)):
-    """Per-candle candlestick patterns for drawing markers on the chart."""
-    from app.features.candlesticks import add_candlestick_patterns, detected_patterns
+async def patterns(
+    symbol: str = Query(...),
+    timeframe: str = "1h",
+    limit: int = Query(300, ge=60, le=1000),
+    full: bool = Query(True, description="Include the full library, not just the 14 core patterns"),
+):
+    """Per-candle candlestick patterns for drawing markers on the chart.
 
-    candles = await app.state.binance.fetch_history(symbol, timeframe, total=limit)
+    ``full=True`` adds the extended library (Marubozu, Three White Soldiers,
+    Abandoned Baby, Tasuki Gaps…). Those are display-only — the model is trained on
+    the core set and does not see them.
+    """
+    from app.features.candlesticks import add_candlestick_patterns, detected_patterns
+    from app.features.patterns_extra import add_extended_patterns, extended_detected
+
+    candles = await _provider(symbol).fetch_history(symbol, timeframe, total=limit)
     df = candles_to_frame(candles)
     enriched = add_candlestick_patterns(df)
+    if full:
+        enriched = add_extended_patterns(enriched)
+
     out = []
     for ts, row in enriched.iterrows():
-        found = detected_patterns(row)
+        found = detected_patterns(row)                       # core (the model sees these)
+        if full:
+            found += extended_detected(row)                  # extended (display only)
         if found:
             p = found[0]
             out.append({
                 "time": int(ts.timestamp()),
-                "name": p["name"].split(" / ")[0],  # short label
+                "name": p["name"].split(" / ")[0],           # short label
                 "dir": p["dir"],
+                "all": [f["name"] for f in found],           # everything on this bar
             })
     return {"symbol": symbol.upper(), "timeframe": timeframe, "patterns": out}
+
+
+@app.get("/patterns/library")
+async def pattern_library():
+    """The whole catalogue — every pattern the platform can name, and whether the
+    model actually learns from it."""
+    from app.features.candlesticks import CANDLE_FEATURE_COLUMNS, PATTERN_INFO
+    from app.features.patterns_extra import EXTENDED_PATTERN_INFO
+
+    items = [
+        {"name": n, "desc": d, "dir": dr, "rarity": "common",
+         "model_sees": col in CANDLE_FEATURE_COLUMNS}
+        for col, (n, d, dr) in PATTERN_INFO.items()
+    ] + [
+        {"name": n, "desc": d, "dir": dr, "rarity": r, "model_sees": False}
+        for _, (n, d, dr, r) in EXTENDED_PATTERN_INFO.items()
+    ]
+    return {
+        "total": len(items),
+        "model_features": sum(1 for i in items if i["model_sees"]),
+        "patterns": items,
+    }
 
 
 @app.websocket("/ws/signals")
@@ -458,7 +633,7 @@ async def ws_signals(ws: WebSocket, symbol: str = "BTCUSDT", timeframe: str = "1
     """
     await ws.accept()
     service: AnalysisService = app.state.service
-    client: BinanceClient = app.state.binance
+    client = _provider(symbol)
     symbol = symbol.upper()
 
     buffer: list[Candle] = await client.fetch_history(symbol, timeframe, total=settings.seq_len + 200)

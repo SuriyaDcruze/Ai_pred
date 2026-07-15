@@ -174,11 +174,14 @@ def train(args: argparse.Namespace) -> str:
 
         feats_train = fb.transform(train_df)
         feats_val = fb.transform(val_df)
+        cost = getattr(args, "cost_pct", 0.0)
         labels_train = make_labels(
-            train_df["close"].to_numpy(), train_df["high"].to_numpy(), train_df["low"].to_numpy(), args.horizon
+            train_df["close"].to_numpy(), train_df["high"].to_numpy(), train_df["low"].to_numpy(),
+            args.horizon, cost_pct=cost,
         )
         labels_val = make_labels(
-            val_df["close"].to_numpy(), val_df["high"].to_numpy(), val_df["low"].to_numpy(), args.horizon
+            val_df["close"].to_numpy(), val_df["high"].to_numpy(), val_df["low"].to_numpy(),
+            args.horizon, cost_pct=cost,
         )
         ds_train = SequenceDataset(feats_train, labels_train, args.seq_len, args.horizon)
         # Validation windows: only those ending in the held-out segment.
@@ -215,26 +218,45 @@ def train(args: argparse.Namespace) -> str:
             writer.add_scalar("loss/train", tr["loss"], global_step)
             writer.add_scalar("loss/val", va["loss"], global_step)
             writer.add_scalar("loss/val_direction", va["loss_direction"], global_step)
+            # NB: dir_loss is a LOSS, not an accuracy. ln(3) = 1.099 is the score of
+            # random guessing on 3 classes — anything near it means the direction
+            # head has learned nothing, however pretty the total loss looks.
             logger.info(
-                "fold %d ep %d | train %.4f | val %.4f (dir %.4f)",
+                "fold %d ep %d | train %.4f | val %.4f (dir_loss %.4f, random=1.099)",
                 fold_idx, epoch, tr["loss"], va["loss"], va["loss_direction"],
             )
 
-            if va["loss"] < best_val - 1e-4:
-                best_val = va["loss"]
+            # Select on the DIRECTION loss, not the total.
+            #
+            # This used to be `va["loss"]`, and that was a real bug. The total loss
+            # also contains the regression heads (predicted high/low/close/vol),
+            # which keep improving long after the direction head has started to
+            # overfit. So total loss kept falling, training kept going, checkpoints
+            # kept being saved — while the ONLY head we actually trade on drifted
+            # back toward random. We were selecting models on a metric we don't use.
+            #
+            # Direction is what the decision engine consumes. Select on direction.
+            score = va["loss_direction"]
+            if score < best_val - 1e-4:
+                best_val = score
                 patience_left = args.patience
                 _save_checkpoint(best_path, model, fb, cfg)
             else:
                 patience_left -= 1
                 if patience_left <= 0:
-                    logger.info("Early stopping (no val improvement).")
+                    logger.info("Early stopping (direction loss stopped improving).")
                     writer.close()
                     return best_path
 
     writer.close()
     if not os.path.exists(best_path):  # ensure we always leave a checkpoint
         _save_checkpoint(best_path, model, fb, cfg)
-    logger.info("Best val loss %.4f -> %s", best_val, best_path)
+    logger.info("Best val DIRECTION loss %.4f (random = 1.099) -> %s", best_val, best_path)
+    if best_val > 1.05:
+        logger.warning(
+            "Direction loss %.4f is essentially random (1.099). This checkpoint has learned "
+            "nothing about direction — do not trade it.", best_val
+        )
     return best_path
 
 
@@ -258,6 +280,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--bars", type=int, default=5000)
     p.add_argument("--seq-len", dest="seq_len", type=int, default=settings.seq_len)
     p.add_argument("--horizon", type=int, default=5)
+    p.add_argument("--cost-pct", dest="cost_pct", type=float, default=0.0,
+                   help="Round-trip cost. Moves smaller than this are labelled NEUTRAL, "
+                        "so the model is never taught to chase unprofitable wiggles.")
     p.add_argument("--epochs", type=int, default=10)
     p.add_argument("--folds", type=int, default=4)
     p.add_argument("--batch-size", dest="batch_size", type=int, default=64)
