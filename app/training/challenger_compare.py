@@ -25,7 +25,9 @@ import numpy as np
 import pandas as pd
 
 from app.features.engineering import RAW_FEATURE_COLUMNS
+from app.features.interactions import INTERACTION_FEATURES, add_interactions
 from app.features.market_regime import REGIME_FEATURES, add_market_regime
+from app.features.multi_timeframe import MULTI_TF_FEATURES, add_multi_timeframe
 from app.features.price_action import PRICE_ACTION_FEATURES, add_price_action
 from app.features.session import SESSION_FEATURES, add_session_features
 from app.training.walk_forward import purged_walk_forward
@@ -43,6 +45,8 @@ def _frame(df: pd.DataFrame, is_stock: bool) -> pd.DataFrame:
     f = add_market_regime(f)
     f = add_price_action(f)
     f = add_session_features(f, is_stock=is_stock)
+    f = add_multi_timeframe(f)
+    f = add_interactions(f)
     return f
 
 
@@ -137,14 +141,16 @@ def run(assets: list[str], interval: str, bars: int, horizon: int, n_folds: int,
     reg = [c for c in REGIME_FEATURES if c in example.columns]
     pa = [c for c in PRICE_ACTION_FEATURES if c in example.columns]
     ses = [c for c in SESSION_FEATURES if c in example.columns]
+    mtf = [c for c in MULTI_TF_FEATURES if c in example.columns]
+    ix = [c for c in INTERACTION_FEATURES if c in example.columns]
 
     sets = {
         "champion (base)": base,
+        "+ multi-timeframe": base + mtf,
+        "+ interactions": base + ix,
         "+ market regime": base + reg,
-        "+ price action": base + pa,
-        "+ session": base + ses,
-        "+ regime + price action": base + reg + pa,
-        "+ all groups": base + reg + pa + ses,
+        "+ mtf + interactions": base + mtf + ix,
+        "+ all Phase-2 groups": base + mtf + ix + reg,
     }
 
     rows = {}

@@ -13,7 +13,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from app.features.interactions import INTERACTION_FEATURES, add_interactions
 from app.features.market_regime import REGIME_FEATURES, add_market_regime
+from app.features.multi_timeframe import MULTI_TF_FEATURES, add_multi_timeframe
 from app.features.price_action import PRICE_ACTION_FEATURES, add_price_action
 from app.features.session import SESSION_FEATURES, add_session_features
 from app.indicators.technical import add_all_indicators
@@ -83,6 +85,15 @@ def test_session_stock_variant_is_future_invariant():
     _assert_future_invariant(add_session_features, SESSION_FEATURES, is_stock=True)
 
 
+def test_multi_timeframe_is_future_invariant():
+    """The hard one: higher-TF context must not peek at the not-yet-closed HTF bar."""
+    _assert_future_invariant(add_multi_timeframe, MULTI_TF_FEATURES)
+
+
+def test_interactions_are_future_invariant():
+    _assert_future_invariant(add_interactions, INTERACTION_FEATURES)
+
+
 # --- sanity: features actually get produced, and are finite ---
 
 @pytest.mark.parametrize("builder,cols,kw", [
@@ -120,6 +131,20 @@ def test_no_shift_minus_one_in_source():
             ln for node in ast.walk(tree)
             if isinstance(node, ast.Call)
             for ln in [ast.unparse(node)]
+        )
+        assert "shift(-1)" not in code, f"{name} uses forbidden shift(-1)"
+        assert "center=True" not in code, f"{name} uses forbidden centered rolling"
+
+
+def test_multi_tf_and_interactions_no_leak_idioms():
+    import ast
+    import pathlib
+
+    for name in ("multi_timeframe.py", "interactions.py"):
+        src = pathlib.Path("app/features") / name
+        tree = ast.parse(src.read_text(encoding="utf-8"))
+        code = "\n".join(
+            ast.unparse(node) for node in ast.walk(tree) if isinstance(node, ast.Call)
         )
         assert "shift(-1)" not in code, f"{name} uses forbidden shift(-1)"
         assert "center=True" not in code, f"{name} uses forbidden centered rolling"
