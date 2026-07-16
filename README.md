@@ -53,7 +53,7 @@ Most trading products hide these numbers. We lead with them.
 |----------|---------------|
 | **How often does it guess direction right?** | **~59–61%** out-of-sample (50% = a coin flip). Wrong ~40% of the time, by design. |
 | **Does raw direction make money after fees?** | **No — break-even.** 537 trades, ~0.00 avg, not different from zero. |
-| **Did better features help direction?** | **No.** 4 specs, 8 feature groups, purged walk-forward — every gain inside the noise. ~61% is the ceiling. |
+| **Did better features help?** | **No — measured across 6 specs, 10 feature groups** (regime, price-action, session, multi-timeframe, interactions, and India-specific: relative-strength-vs-Nifty, gap, VWAP, 52-week). Every gain inside the noise. Feature engineering is **exhausted**. |
 | **Does the outcome model (trade selection) help?** | **Yes, in backtest.** Filtering → positive expectancy on crypto AND NSE, survived the untouched final test. |
 | **Is it proven with real money?** | **No — 0 live trades.** Backtest-verified ≠ live-proven. Needs weeks-to-months of forward-testing. |
 | **Can it reach 90% / guaranteed profit?** | **No. Impossible.** Anyone claiming it is lying. |
@@ -90,6 +90,17 @@ Groww (Reliance, TCS, Infosys, HDFC Bank, ITC, SBI, Bajaj Finance, …).
   daily decisions, not intraday timing). The NSE winning sample is **41 untouched
   trades** — promising, not proven. **Paper-trade on Groww first**, risk ≤1%, always
   use the stop. This is **not registered investment advice** (SEBI).
+
+### India-specific features — tested, no predictive edge (kept for explainability)
+The V2 "India First" spec proposed NSE-specific signals — **relative strength vs
+Nifty 50**, gap behaviour, VWAP distance, 52-week position, weekly trend
+(`app/features/india.py`). We tested them honestly on the NSE outcome model
+(untouched final test): base +0.85R (PF 7.4) → **+ India features +0.62R (PF 3.9),
+slightly worse.** They add **no trade-selection edge** — consistent with every prior
+feature test. They are kept **for explainability only**: a Groww card can honestly
+say "outperforming Nifty, near 52-week high" as *context*, not as a model input.
+**The product's moat is transparency + the validated outcome model, not more
+features.**
 
 ---
 
