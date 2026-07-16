@@ -52,18 +52,28 @@ The individual volumes are authored on approval, in the priority agreed below.
 | 16 | [**User Profile**](16-user-profile.md) | Preferences, watchlists, risk appetite, auth identity | 🔴 not built |
 | 17 | [**Paper Trading**](17-paper-trading.md) | Log recommendations, score vs real future price | 🟡 tracker exists |
 | 18 | [**Forward Testing**](18-forward-testing.md) ⭐ | The live-proof engine — turn backtest edge into a record | 🔴 the key gap |
-| 19 | **Backend Architecture** | FastAPI app, service layer, async, background tasks | 🟡 monolith |
-| 20 | **API Architecture** | REST/WS contracts, versioning, gateway, rate limits, auth | 🟡 unversioned |
-| 21 | **Database Design** | From SQLite → Postgres; schema for predictions/users/trades | 🟡 minimal |
-| 22 | **Frontend Architecture** | Single-file dashboard → componentised app; state, theming | 🟡 one file |
-| 23 | **Mobile Architecture** | Responsive web now; PWA / native path | 🔴 responsive only |
-| 24 | **Security Architecture** | Auth, secrets, no-order guarantee, SEBI disclaimers, PII | 🔴 minimal |
-| 25 | **Deployment** | Render/HF/Docker; envs; CI/CD; model artifact management | 🟡 basic |
-| 26 | **Testing Strategy** | Unit, leakage/future-invariance, walk-forward, e2e | 🟢 ~230 tests |
-| 27 | **Observability & Monitoring** | Logs, metrics, drift detection, model/version tracking | 🔴 logs only |
-| 28 | **Future Roadmap** | Sequenced, honest, edge-proof-first | 🟡 in RESULTS |
+| 19 | [**Backend Architecture**](19-backend-architecture.md) | FastAPI app, service layer, async, background tasks | 🟡 monolith |
+| 20 | [**API Architecture**](20-api-architecture.md) | REST/WS contracts, versioning, gateway, rate limits, auth | 🟡 unversioned |
+| 21 | [**Database Design**](21-database-design.md) | From SQLite → Postgres; schema for predictions/users/trades | 🟡 minimal |
+| 22 | [**Frontend Architecture**](22-frontend-architecture.md) | Single-file dashboard → componentised app; state, theming | 🟡 one file |
+| 23 | [**Mobile Architecture**](23-mobile-architecture.md) | Responsive web now; PWA / native path | 🔴 responsive only |
+| 24 | [**Security Architecture**](24-security-architecture.md) | Auth, secrets, no-order guarantee, SEBI disclaimers, PII | 🔴 minimal |
+| 25 | [**Deployment**](25-deployment.md) | Render/HF/Docker; envs; CI/CD; model artifact management | 🟡 basic |
+| 26 | [**Testing Strategy**](26-testing-strategy.md) | Unit, leakage/future-invariance, walk-forward, e2e | 🟢 ~230 tests |
+| 27 | [**Observability & Monitoring**](27-observability-monitoring.md) | Logs, metrics, drift detection, model/version tracking | 🔴 logs only |
+| 28 | [**Future Roadmap**](28-future-roadmap.md) | Sequenced, honest, edge-proof-first | ✅ written |
 
 Legend: 🟢 built & tested · 🟡 partial / needs hardening · 🔴 not built.
+(Status reflects the *implementation*, not the *volume* — all 28 volumes are now written.)
+
+---
+
+## ✅ Book status: all 28 volumes authored (v1.0)
+
+The Architecture Book is complete and is the permanent technical foundation. Per the
+mandated process, **no module is implemented until its volume is reviewed and the build is
+approved.** The recommended first implementation is **Volume 18 — Forward Testing** (the
+live-proof engine); everything else waits on it.
 
 ---
 
