@@ -89,6 +89,24 @@
   ul.news a{color:#bcd4e6; text-decoration:none}
   .foot{color:var(--muted); font-size:11.5px; line-height:1.6; text-align:center; margin-top:22px; padding:0 8px}
   .muted{color:var(--muted)}
+
+  /* chat */
+  .chatcard{margin-top:14px; padding:16px}
+  .msgs{display:flex; flex-direction:column; gap:10px; max-height:380px; overflow-y:auto; padding:6px 2px 10px}
+  .msg{max-width:88%; padding:11px 14px; border-radius:16px; font-size:14px; line-height:1.5; white-space:pre-wrap}
+  .msg.you{align-self:flex-end; background:linear-gradient(90deg,var(--ice-deep),var(--ice)); color:#04121d; font-weight:600; border-bottom-right-radius:5px}
+  .msg.ai{align-self:flex-start; background:var(--glass-2); border:1px solid var(--line); border-bottom-left-radius:5px}
+  .ticket{margin-top:9px; padding:11px 13px; border-radius:13px; border:1px solid var(--line); background:rgba(52,211,153,.06)}
+  .ticket.sell{background:rgba(251,113,133,.06)}
+  .ticket .tt{font-weight:800; font-size:15px; margin-bottom:6px}
+  .ticket .lv{display:flex; justify-content:space-between; font-size:13px; padding:3px 0}
+  .ticket .lv b{font-variant-numeric:tabular-nums}
+  .chips{display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 10px}
+  .chip{background:var(--glass-2); border:1px solid var(--line); color:#bcd4e6; border-radius:20px; padding:8px 13px; font-size:12.5px; cursor:pointer; min-height:38px}
+  .chip:active{background:rgba(56,189,248,.18)}
+  .chatin{display:flex; gap:8px}
+  .chatin input{flex:1; background:var(--glass-2); border:1px solid var(--line); color:var(--ink); border-radius:12px; padding:12px 14px; font-size:15px; outline:none; min-height:46px}
+  .chatin button{background:linear-gradient(90deg,var(--mint),var(--ice)); border:none; color:#04121d; font-weight:800; border-radius:12px; padding:0 18px; font-size:15px; cursor:pointer; min-height:46px}
 </style>
 </head>
 <body>
@@ -160,6 +178,23 @@
     <div class="card glass">
       <h3>📰 News &amp; sentiment</h3>
       <div id="news" class="muted">Loading headlines…</div>
+    </div>
+  </div>
+
+  <div class="card glass chatcard">
+    <h3>💬 Ask the AI — when &amp; where to trade</h3>
+    <div class="chips">
+      <span class="chip" onclick="ask('Where do I trade right now?')">📍 Where do I trade?</span>
+      <span class="chip" onclick="ask('What is the exact plan now?')">🎯 Exact plan</span>
+      <span class="chip" onclick="ask('Where is my stop and target?')">🛑 Stop &amp; target</span>
+      <span class="chip" onclick="ask('Is now a good time to trade?')">⏱ Good time?</span>
+    </div>
+    <div class="msgs" id="msgs">
+      <div class="msg ai">Hi — I read the live chart with both models. Ask me “where do I trade?” or “what’s the plan?” and I’ll give you the entry, stop, and target to place on your broker. I’ll always tell you honestly when it’s better to <b>wait</b>.</div>
+    </div>
+    <div class="chatin">
+      <input id="chatMsg" placeholder="Ask… e.g. where do I trade?" onkeydown="if(event.key==='Enter')send()">
+      <button onclick="send()">Send</button>
     </div>
   </div>
 
@@ -305,6 +340,42 @@ function connect(){
   };
   ws.onclose=()=>{ $('liveTag').style.opacity=.3; };
   ws.onopen=()=>{ $('liveTag').style.opacity=1; };
+}
+
+/* ---------- chat: the AI's when & where ---------- */
+function bubble(cls, html){
+  const d=document.createElement('div'); d.className='msg '+cls; d.innerHTML=html;
+  $('msgs').appendChild(d); $('msgs').scrollTop=$('msgs').scrollHeight; return d;
+}
+function ask(q){ $('chatMsg').value=q; send(); }
+async function send(){
+  const inp=$('chatMsg'); const q=inp.value.trim(); if(!q) return;
+  inp.value=''; bubble('you', q);
+  const wait=bubble('ai','…');
+  try{
+    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({symbol:curSymbol,timeframe:curTf,message:q})});
+    const j=await r.json();
+    let html=(j.reply||'—').replace(/\n/g,'<br>');
+    // if the AI gave concrete levels, add a copy-able ticket
+    if(j.side && j.entry){
+      const sell=j.side==='SELL';
+      html+=`<div class="ticket ${sell?'sell':''}"><div class="tt" style="color:${sell?'var(--coral)':'var(--mint)'}">${j.side} ${curSymbol}</div>`+
+        `<div class="lv"><span>Entry</span><b>${fmt(j.entry)}</b></div>`+
+        (j.stop?`<div class="lv"><span>🛑 Stop</span><b>${fmt(j.stop)}</b></div>`:'')+
+        (j.tp1?`<div class="lv"><span>🎯 Target 1</span><b>${fmt(j.tp1)}</b></div>`:'')+
+        (j.tp2?`<div class="lv"><span>🎯 Target 2</span><b>${fmt(j.tp2)}</b></div>`:'')+`</div>`;
+    }
+    // ALWAYS attach the outcome model's honest verdict when a trade is suggested,
+    // so the chat can never contradict the veto layer.
+    const suggestsTrade = (j.side && j.entry) || /THE PLAN|\bBUY\b|\bSELL\b/.test(j.reply||'');
+    if(suggestsTrade){
+      if(lastOutcomeTake===false) html+=`<div class="muted" style="margin-top:9px;padding:9px 11px;border-radius:11px;background:rgba(251,113,133,.09);color:var(--coral)">🔴 <b>Outcome model VETOes this</b> — this kind of setup historically doesn’t reach target before stop. Better to <b>wait</b>, even though the direction leans a way.</div>`;
+      else if(lastOutcomeTake===true) html+=`<div class="muted" style="margin-top:9px;padding:9px 11px;border-radius:11px;background:rgba(52,211,153,.09);color:var(--mint)">🟢 <b>Outcome model agrees.</b> Still your call — use the stop, risk ≤1%, and paper-trade before real money.</div>`;
+    }
+    wait.innerHTML=html;
+    $('msgs').scrollTop=$('msgs').scrollHeight;
+  }catch(e){ wait.innerHTML='Sorry — could not reach the AI. Try again.'; }
 }
 
 /* refresh the model reads periodically (news slower) */
