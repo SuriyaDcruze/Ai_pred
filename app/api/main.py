@@ -146,7 +146,37 @@ async def analyze(req: AnalyzeRequest):
         raise HTTPException(422, str(exc)) from exc
     _RECENT_SIGNALS.appendleft(signal)
     checklist = await _checklist_for(signal, df)
-    return {"signal": signal, "rules": checklist}
+    outcome = _outcome_for(service, df)
+    return {"signal": signal, "rules": checklist, "outcome": outcome}
+
+
+def _outcome_for(service: AnalysisService, df: pd.DataFrame) -> dict | None:
+    """Outcome-model verdict for the latest bar (the trade-selection veto layer)."""
+    try:
+        prediction = service.predictor.predict(df)
+        return service.assess_outcome(df, prediction)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+@app.get("/outcome")
+async def outcome(symbol: str = Query(...), timeframe: str = "1h"):
+    """The outcome model's verdict on the live setup: will target hit before stop?
+
+    This is the trade-selection layer that turned break-even into positive expectancy
+    in backtests (see reports/outcome_model_summary.md). It VETOes trades the direction
+    model wants but that historically don't reach their target first.
+    """
+    service: AnalysisService = app.state.service
+    candles = await _provider(symbol).fetch_history(symbol.upper(), timeframe, total=400)
+    df = candles_to_frame(candles)
+    prediction = service.predictor.predict(df)
+    verdict = service.assess_outcome(df, prediction)
+    if verdict is None:
+        return {"available": False,
+                "note": "Outcome model not trained yet. Run: python -m app.training.outcome_training --save"}
+    return {"available": True, "direction": prediction.direction.value,
+            "direction_confidence": round(prediction.confidence, 3), **verdict}
 
 
 async def _checklist_for(signal, df: pd.DataFrame) -> dict:

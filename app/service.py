@@ -69,6 +69,38 @@ class AnalysisService:
                 self._using_heuristic = True
         return self._predictor
 
+    @property
+    def outcome_model(self):
+        """The target-before-stop veto layer. Loaded once; None if not trained yet."""
+        if not hasattr(self, "_outcome_model"):
+            from app.ai.outcome_model import OutcomePredictor
+
+            self._outcome_model = OutcomePredictor.load()
+            if self._outcome_model is not None:
+                logger.info("AnalysisService loaded the outcome (trade-selection) model.")
+        return self._outcome_model
+
+    def assess_outcome(self, ohlcv: pd.DataFrame, prediction: ModelPrediction) -> dict | None:
+        """Score the live setup with the outcome model: will target hit before stop?
+
+        Returns None if the model isn't available or the input is too short. Never
+        raises — a veto layer must never break the primary signal.
+        """
+        model = self.outcome_model
+        if model is None:
+            return None
+        try:
+            import numpy as np
+
+            feats = self.feature_builder.build_frame(ohlcv)
+            cols = [c for c in self.feature_builder.feature_columns if c in feats.columns]
+            row = np.nan_to_num(feats.iloc[-1][cols].to_numpy(dtype="float32"))
+            probs = [prediction.p_bullish, prediction.p_bearish, prediction.p_sideways]
+            return model.assess(row, probs)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("outcome assessment failed: %s", exc)
+            return None
+
     def analyze(
         self, ohlcv: pd.DataFrame, symbol: str, exchange: str, timeframe: str
     ) -> Signal:

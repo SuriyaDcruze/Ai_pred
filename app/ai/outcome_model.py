@@ -131,6 +131,52 @@ def direction_side(dir_probs: np.ndarray) -> np.ndarray:
     return side
 
 
+OUTCOME_MODEL_PATH = "artifacts/outcome_model.pkl"
+
+
+class OutcomePredictor:
+    """Loads a trained outcome model and scores a live setup.
+
+    At inference there is no out-of-fold concern: the model was trained on history and
+    scores the *current* bar, which is genuinely unseen future data. It answers one
+    question — given this setup and the direction model's live confidence, what is the
+    probability the trade reaches its target before its stop?
+    """
+
+    def __init__(self, model, scaler, meta: dict):
+        self.model = model
+        self.scaler = scaler
+        self.meta = meta or {}
+        self.threshold = float(self.meta.get("threshold", 0.55))
+
+    @classmethod
+    def load(cls, path: str = OUTCOME_MODEL_PATH) -> "OutcomePredictor | None":
+        import os
+
+        import joblib
+
+        if not os.path.exists(path):
+            return None
+        d = joblib.load(path)
+        return cls(d["model"], d["scaler"], d.get("meta", {}))
+
+    def assess(self, base_row: np.ndarray, dir_probs_row: np.ndarray) -> dict:
+        """base_row = the 45 production features for the current bar (1D).
+        dir_probs_row = [p_up, p_dn, p_side] from the live direction model."""
+        X = build_outcome_features(
+            np.asarray(base_row, dtype=np.float32).reshape(1, -1),
+            np.asarray(dir_probs_row, dtype=np.float32).reshape(1, -1),
+        )
+        p_target = float(self.model.predict_proba(self.scaler.transform(np.nan_to_num(X)))[0, 1])
+        return {
+            "p_target": p_target,
+            "p_stop": 1.0 - p_target,
+            "threshold": self.threshold,
+            "take": p_target >= self.threshold,
+            "verdict": "TAKE" if p_target >= self.threshold else "VETO",
+        }
+
+
 def build_outcome_features(base_X: np.ndarray, dir_probs: np.ndarray) -> np.ndarray:
     """Outcome-model inputs = base features + out-of-fold direction signal.
 

@@ -166,6 +166,13 @@
     </div>
     <div>
       <div class="card" id="panel"><div class="muted">Connecting to live feed…</div></div>
+      <div class="card" id="outcomeCard" style="margin-top:12px">
+        <h4 style="margin-top:0;display:flex;align-items:center;gap:8px">
+          🎯 Outcome Model
+          <span class="muted" style="font-weight:400;font-size:12px">will target hit before stop?</span>
+        </h4>
+        <div id="outcomeBody" class="muted">Checking trade quality…</div>
+      </div>
       <div class="card" id="rulesCard" style="margin-top:12px">
         <h4 style="margin-top:0;display:flex;align-items:center;gap:8px">
           ✅ My Rules
@@ -309,6 +316,41 @@ async function loadRiskNotice() {
   } catch (e) { /* a missing banner must never break the dashboard */ }
 }
 
+/* ---- Outcome model: the verified trade-selection veto layer ---- */
+async function loadOutcome() {
+  const body = document.getElementById('outcomeBody');
+  if (!body) return;
+  try {
+    const j = await (await fetch(`/outcome?symbol=${curSymbol}&timeframe=${curTf}`)).json();
+    if (!j.available) {
+      body.innerHTML = '<div class="muted">Outcome model not trained yet.</div>';
+      return;
+    }
+    const pct = Math.round(j.p_target * 100);
+    const take = j.take;
+    const col = take ? '#26a69a' : '#ef5350';
+    const icon = take ? '🟢 TAKE' : '🔴 VETO';
+    const thr = Math.round(j.threshold * 100);
+    body.innerHTML = `
+      <div style="font-weight:700;color:${col};font-size:15px">${icon}</div>
+      <div style="margin:6px 0 4px;font-size:13px">
+        P(target hit before stop): <b style="color:${col}">${pct}%</b>
+        <span class="muted">(needs ≥ ${thr}%)</span>
+      </div>
+      <div class="bar"><span style="width:${pct}%;background:${col}"></span></div>
+      <div class="muted" style="font-size:12px;margin-top:6px">
+        Direction says <b>${j.direction}</b> (${Math.round(j.direction_confidence*100)}%), but this
+        layer judges whether the trade actually <b>reaches its target before its stop</b>.
+        ${take ? 'This setup historically pays — worth considering.'
+               : 'This setup historically does NOT reach target first — skip it.'}
+      </div>
+      <div class="muted" style="font-size:11px;margin-top:5px">
+        The one layer that turned break-even into a positive edge in backtests
+        (verified on the untouched final test). Still needs live proof — paper-trade it.
+      </div>`;
+  } catch (e) { body.innerHTML = '<div class="muted">Could not check the outcome model.</div>'; }
+}
+
 /* ---- My Rules: your checklist, enforced. Discipline, not prediction. ---- */
 let rulesEditing = false;
 function toggleRulesEdit() { rulesEditing = !rulesEditing; loadRules(); }
@@ -409,6 +451,7 @@ function connect() {
   loadCalls();
   loadNews();
   loadRules();
+  loadOutcome();
   loadRiskNotice();
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   setDot('', 'connecting…');
@@ -699,6 +742,8 @@ setInterval(loadCalls, 8000);
 setInterval(loadNews, 180000);
 /* re-score your checklist against the live setup every 20s */
 setInterval(() => { if (!rulesEditing) loadRules(); }, 20000);
+/* re-score the outcome model on the live setup every 20s */
+setInterval(loadOutcome, 20000);
 
 async function clearCalls() {
   await fetch('/calls', { method: 'DELETE' });

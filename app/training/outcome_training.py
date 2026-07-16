@@ -188,6 +188,46 @@ def write_report(res: dict, meta: dict) -> None:
     logger.info("Wrote reports/outcome_model_summary.md")
 
 
+def train_and_save(assets: list[str], interval: str, bars: int, horizon: int,
+                   n_folds: int, cost_pct: float, threshold: float, seed: int,
+                   out: str = "artifacts/outcome_model.pkl") -> dict:
+    """Train a shippable outcome model on all assets and save it for live inference."""
+    import os
+
+    import joblib
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    from sklearn.preprocessing import StandardScaler
+
+    Xs, ys = [], []
+    for asset in assets:
+        X, y_dir, frame = _prep(asset, interval, bars, horizon, cost_pct)
+        atr = frame["atr"].to_numpy()
+        close, high, low = frame["close"].to_numpy(), frame["high"].to_numpy(), frame["low"].to_numpy()
+        dir_probs = oof_direction_probs(X, y_dir, horizon=horizon, n_folds=n_folds, seed=seed)
+        side = direction_side(dir_probs)
+        oc_lab, r_out = outcome_labels(high, low, close, side, atr, horizon=horizon)
+        Xoc = build_outcome_features(X, dir_probs)
+        mask = (side != 0) & (oc_lab >= 0) & ~np.isnan(r_out)
+        Xs.append(Xoc[mask])
+        ys.append((oc_lab[mask] == TARGET_FIRST).astype(int))
+
+    Xall = np.vstack(Xs)
+    yall = np.concatenate(ys)
+    scaler = StandardScaler().fit(Xall)
+    clf = HistGradientBoostingClassifier(max_depth=4, max_iter=200, learning_rate=0.05,
+                                         random_state=seed)
+    clf.fit(scaler.transform(Xall), yall)
+
+    meta = {"assets": assets, "interval": interval, "horizon": horizon,
+            "threshold": threshold, "n_train": len(yall),
+            "base_rate": float(yall.mean())}
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    joblib.dump({"model": clf, "scaler": scaler, "meta": meta}, out)
+    logger.info("Saved outcome model to %s (%d trades, base target-rate %.1f%%)",
+                out, len(yall), meta["base_rate"] * 100)
+    return meta
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Train + evaluate the target-before-stop outcome model")
     p.add_argument("--assets", nargs="+", default=["BTCUSDT", "ETHUSDT", "SOLUSDT"])
@@ -198,7 +238,14 @@ def main() -> None:
     p.add_argument("--cost-pct", dest="cost_pct", type=float, default=0.0012)
     p.add_argument("--threshold", type=float, default=0.55)
     p.add_argument("--seed", type=int, default=7)
+    p.add_argument("--save", action="store_true", help="Also train + save a shippable model")
     args = p.parse_args()
+
+    if args.save:
+        meta = train_and_save(args.assets, args.interval, args.bars, args.horizon,
+                              args.folds, args.cost_pct, args.threshold, args.seed)
+        print(f"\nSaved outcome model — {meta['n_train']} trades, "
+              f"base target-rate {meta['base_rate']:.1%}, threshold {meta['threshold']}\n")
 
     res = run(args.assets, args.interval, args.bars, args.horizon, args.folds,
               args.cost_pct, args.threshold, args.seed)
