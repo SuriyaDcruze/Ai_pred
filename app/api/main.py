@@ -237,6 +237,22 @@ async def risk_notice():
     }
 
 
+@app.get("/screener/nse")
+async def screener_nse():
+    """Scan liquid NSE stocks and return today's TAKE setups with buy/sell levels.
+
+    Uses the NSE-trained outcome model (validated to hold on Indian stocks). Only
+    surfaces setups both models agree on. Backtest-verified, NOT proven live.
+    """
+    import anyio
+
+    from app.screener import scan_nse
+
+    service: AnalysisService = app.state.service
+    # the scan does blocking work (fetch + fit per stock) — run it off the event loop
+    return await anyio.to_thread.run_sync(lambda: scan_nse(service))
+
+
 @app.get("/rules")
 async def get_rules():
     """Your checklist and its current settings."""

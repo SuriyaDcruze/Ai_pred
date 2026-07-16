@@ -182,6 +182,11 @@
   </div>
 
   <div class="card glass chatcard">
+    <h3>🇮🇳 Today's NSE setups (Groww) <button class="chip" style="margin-left:auto" onclick="scanNse()">↻ Scan</button></h3>
+    <div id="nse" class="muted" style="font-size:13px">Tap “Scan” to check today's Indian stocks (daily). Takes ~30s.</div>
+  </div>
+
+  <div class="card glass chatcard">
     <h3>💬 Ask the AI — when &amp; where to trade</h3>
     <div class="chips">
       <span class="chip" onclick="ask('Where do I trade right now?')">📍 Where do I trade?</span>
@@ -340,6 +345,35 @@ function connect(){
   };
   ws.onclose=()=>{ $('liveTag').style.opacity=.3; };
   ws.onopen=()=>{ $('liveTag').style.opacity=1; };
+}
+
+/* ---------- NSE screener: which Indian stock to buy today ---------- */
+async function scanNse(){
+  const el=$('nse'); el.innerHTML='<span class="muted">Scanning 15 NSE stocks… ~30s ⏳</span>';
+  try{
+    const j=await (await fetch('/screener/nse')).json();
+    if(!j.available){ el.innerHTML='<span class="muted">NSE model not ready.</span>'; return; }
+    function ticket(r){
+      const sell=r.action.startsWith('SELL');
+      return `<div class="ticket ${sell?'sell':''}" style="margin-top:8px">
+        <div class="tt" style="color:${sell?'var(--coral)':'var(--mint)'}">${r.symbol} · ${r.action} <span class="muted" style="font-weight:600;font-size:12px">P(target) ${Math.round(r.p_target*100)}%</span></div>
+        <div class="lv"><span>Entry</span><b>₹${r.entry}</b></div>
+        <div class="lv"><span>🛑 Stop</span><b>₹${r.stop}</b></div>
+        <div class="lv"><span>🎯 Target</span><b>₹${r.target1} → ₹${r.target2}</b></div></div>`;
+    }
+    let html='';
+    if(j.buy_now.length){
+      html+=`<div style="color:var(--mint);font-weight:700;margin-bottom:2px">🟢 ${j.buy_now.length} setup(s) the AI would take today:</div>`;
+      html+=j.buy_now.map(ticket).join('');
+    } else {
+      html+=`<div style="color:var(--ice);font-weight:700">⏸ No strong buy today — both models vetoed all ${j.scanned} stocks.</div>
+        <div class="muted" style="margin:4px 0 8px">That's normal: the AI only fires on ~13% of setups. Closest candidates (still below the bar):</div>`;
+      html+=j.waiting.slice(0,3).map(r=>`<div style="font-size:13px;padding:4px 0;border-bottom:1px solid rgba(148,190,220,.07)">
+        <b>${r.symbol}</b> · ${r.action} · P(target) ${Math.round(r.p_target*100)}% <span class="muted">(needs ≥60%) · entry ₹${r.entry}, stop ₹${r.stop}</span></div>`).join('');
+    }
+    html+=`<div class="muted" style="font-size:11px;margin-top:10px">Daily timeframe · Yahoo data (~15min delayed) · NSE model verified in backtest, <b>NOT proven live</b>. Paper-trade first; never risk >1%.</div>`;
+    el.innerHTML=html;
+  }catch(e){ el.innerHTML='<span class="muted">Scan failed — try again.</span>'; }
 }
 
 /* ---------- chat: the AI's when & where ---------- */
