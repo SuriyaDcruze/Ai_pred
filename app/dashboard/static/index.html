@@ -1,776 +1,317 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Aegis Trading AI</title>
-  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-  <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:#0b0e11; color:#e6e6e6; }
-    header { padding:14px 20px; border-bottom:1px solid #1c2127; display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
-    header h1 { font-size:16px; margin:0; font-weight:600; }
-    .controls input, .controls button, .controls select { background:#151a21; border:1px solid #2a313a; color:#e6e6e6; border-radius:6px; padding:6px 10px; }
-    .controls button, button { cursor:pointer; }
-    .risk-banner { background:linear-gradient(90deg,#5a1a1a,#7a2020); border-bottom:2px solid #ef5350;
-                   color:#ffe9e9; padding:9px 16px; font-size:13px; text-align:center; line-height:1.45; }
-    .risk-banner b { color:#fff; letter-spacing:.4px; }
-    .risk-banner .sub { color:#ffc9c9; font-size:12px; }
-    .mini { background:#151a21; border:1px solid #2a313a; color:#c9d1d9; border-radius:8px; padding:3px 9px; font-size:11px; }
-    .mini:hover { border-color:#3d4855; color:#e6edf3; }
-    .live { display:flex; align-items:center; gap:6px; font-size:12px; color:#7a828c; }
-    .dot { width:9px; height:9px; border-radius:50%; background:#555; }
-    .dot.on { background:#26a69a; box-shadow:0 0 8px #26a69a; animation:pulse 1.4s infinite; }
-    .dot.off { background:#ef5350; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
-    .price { font-size:14px; color:#c9d1d9; }
-    .grid { display:grid; grid-template-columns: 2fr 1fr; gap:16px; padding:16px; }
-    @media (max-width: 900px){ .grid{ grid-template-columns:1fr; } }
-    .toolbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:8px 4px; font-size:12px; color:#c9d1d9; }
-    .toolbar label { display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none; }
-    .toolbar input[type=checkbox] { accent-color:#26a69a; }
-    .toolbar select { background:#151a21; border:1px solid #2a313a; color:#c9d1d9; border-radius:6px; padding:3px 6px; font-size:12px; }
-    .chart-wrap { position:relative; }
-    .tap-popup { position:absolute; z-index:30; display:none; transform:translate(-50%,-118%);
-      background:#11151b; border:1px solid #2a313a; border-radius:10px; padding:9px 10px 8px; box-shadow:0 8px 24px rgba(0,0,0,.55); }
-    .tap-popup .ttl { font-size:11px; color:#c9d1d9; text-align:center; margin-bottom:7px; white-space:nowrap; }
-    .tap-popup .btns { display:flex; gap:7px; }
-    .tap-popup button { border:none; border-radius:8px; padding:7px 13px; font-weight:700; cursor:pointer; font-size:13px; }
-    .tap-popup .buy { background:#26a69a; color:#04120f; } .tap-popup .sell { background:#ef5350; color:#1a0606; }
-    .tap-popup .x { position:absolute; top:3px; right:7px; color:#7a828c; cursor:pointer; font-size:12px; line-height:1; }
-    #chart { height:440px; border:1px solid #1c2127; border-radius:8px; cursor:crosshair; }
-    .hint { font-size:11px; color:#5f6772; margin-top:6px; }
-    .card { background:#11151b; border:1px solid #1c2127; border-radius:8px; padding:16px; }
-    .decision { font-size:30px; font-weight:800; letter-spacing:.5px; }
-    .BUY { color:#26a69a; } .SELL { color:#ef5350; } .WAIT { color:#c9a227; }
-    .row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #171c22; font-size:14px; }
-    .bar { height:10px; border-radius:5px; background:#1c2127; overflow:hidden; margin:4px 0 10px; }
-    .bar > span { display:block; height:100%; transition:width .4s ease; }
-    h4 { margin:14px 0 4px; font-size:13px; color:#9aa4af; text-transform:uppercase; letter-spacing:.6px; }
-    ul { padding-left:18px; margin:6px 0; font-size:13px; color:#b8c0c9; }
-    .muted { color:#7a828c; font-size:12px; }
-    .flash { animation:flash .8s ease; }
-    @keyframes flash { from{background:#1b2530} to{background:#11151b} }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aegis — Trading AI</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{
+    --ice:#7dd3fc; --ice-deep:#38bdf8; --mint:#34d399; --coral:#fb7185; --amber:#fbbf24;
+    --ink:#e6f1f8; --muted:#8aa4b8; --line:rgba(148,190,220,.14);
+    --glass:rgba(18,38,58,.55); --glass-2:rgba(14,30,48,.72);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); background:#06111d; min-height:100vh; -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  /* glacier backdrop — cool aurora blobs behind frosted glass */
+  body::before{
+    content:""; position:fixed; inset:-20% -20% auto -20%; height:120vh; z-index:-1;
+    background:
+      radial-gradient(40% 40% at 20% 15%, rgba(56,189,248,.22), transparent 70%),
+      radial-gradient(45% 45% at 85% 10%, rgba(45,212,191,.18), transparent 70%),
+      radial-gradient(50% 50% at 60% 90%, rgba(99,102,241,.16), transparent 70%),
+      linear-gradient(160deg,#071626,#06111d 60%,#050d16);
+    filter:saturate(1.05);
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:14px 14px 40px}
+  .glass{
+    background:var(--glass); backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+    border:1px solid var(--line); border-radius:20px; box-shadow:0 8px 30px rgba(2,10,20,.35);
+  }
+  header{display:flex; align-items:center; gap:10px; padding:12px 4px 14px; flex-wrap:wrap}
+  .logo{font-weight:800; font-size:19px; letter-spacing:.3px; display:flex; align-items:center; gap:8px}
+  .logo b{background:linear-gradient(90deg,var(--ice),var(--mint)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .pill{font-size:11px; color:var(--muted); border:1px solid var(--line); padding:3px 9px; border-radius:20px}
+  select{
+    background:var(--glass-2); color:var(--ink); border:1px solid var(--line);
+    border-radius:12px; padding:9px 12px; font-size:14px; font-weight:600; outline:none;
+    -webkit-appearance:none; appearance:none; min-height:42px;
+  }
+  .controls{display:flex; gap:8px; margin-left:auto; flex-wrap:wrap}
+  .controls select{flex:1; min-width:120px}
 
-    /* Chat dock */
-    .chat { margin:0 16px 16px; border:1px solid #1c2127; border-radius:10px; background:#0e1216; display:flex; flex-direction:column; height:320px; }
-    .chat-head { padding:10px 14px; border-bottom:1px solid #1c2127; font-size:13px; color:#9aa4af; display:flex; align-items:center; gap:8px; }
-    .chat-log { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; }
-    .msg { max-width:80%; padding:9px 12px; border-radius:12px; font-size:13.5px; white-space:pre-wrap; line-height:1.45; }
-    .msg.user { align-self:flex-end; background:#1d4ed8; color:#eaf0ff; border-bottom-right-radius:3px; }
-    .msg.bot { align-self:flex-start; background:#161c23; border:1px solid #232b34; border-bottom-left-radius:3px; }
-    .msg.bot b { color:#e6e6e6; }
-    .quick { display:flex; gap:8px; flex-wrap:wrap; padding:0 14px 10px; }
-    .quick button { background:#151a21; border:1px solid #2a313a; color:#c9d1d9; border-radius:14px; padding:5px 11px; font-size:12px; }
-    .quick button:hover { border-color:#3b82f6; }
-    .chat-in { display:flex; gap:8px; padding:12px 14px; border-top:1px solid #1c2127; }
-    .chat-in input { flex:1; background:#151a21; border:1px solid #2a313a; color:#e6e6e6; border-radius:8px; padding:9px 12px; font-size:14px; }
-    .chat-in button { background:#26a69a; border:none; color:#04120f; font-weight:700; border-radius:8px; padding:9px 16px; }
-    .tag { font-size:11px; padding:2px 7px; border-radius:6px; }
-    .tag.g { background:#0f2f28; color:#5fd3bd; } .tag.r { background:#33161a; color:#ff8b8b; }
+  .banner{margin:2px 4px 14px; padding:11px 15px; border-radius:14px; font-size:13px; line-height:1.5;
+    background:linear-gradient(90deg,rgba(251,113,133,.16),rgba(251,113,133,.08));
+    border:1px solid rgba(251,113,133,.35); color:#ffe1e6; display:none}
+  .banner b{color:#fff}
 
-    /* My Calls */
-    .calls { margin:0 16px 16px; border:1px solid #1c2127; border-radius:10px; background:#0e1216; }
-    .calls-head { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #1c2127; font-size:13px; color:#c9d1d9; flex-wrap:wrap; }
-    .calls-head button, .calls-head select { background:#151a21; border:1px solid #2a313a; color:#c9d1d9; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer; }
-    .calls-head select { border-color:#3b82f6; }
-    .winrate { font-weight:700; font-size:14px; }
-    .scoreboard { text-align:center; font-size:15px; font-weight:700; padding:10px 14px; border-bottom:1px solid #1c2127; background:#0b1016; }
-    /* real ON/OFF toggle switch */
-    .switch { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
-    .switch input { display:none; }
-    .switch .slider { position:relative; width:44px; height:23px; border-radius:23px; background:#3a424d;
-      transition:background .2s; flex:none; }
-    .switch .slider::before { content:""; position:absolute; top:3px; left:3px; width:17px; height:17px;
-      border-radius:50%; background:#c9d1d9; transition:transform .2s, background .2s; }
-    .switch input:checked + .slider { background:#26a69a; box-shadow:0 0 9px rgba(38,166,154,.75); }
-    .switch input:checked + .slider::before { transform:translateX(21px); background:#04120f; }
-    .sw-label { font-size:12px; font-weight:700; color:#9aa4af; white-space:nowrap; }
-    .switch input:checked ~ .sw-label { color:#5fd3bd; }
-    .calls-cols { display:flex; gap:1px; background:#1c2127; }
-    .calls-col { flex:1; background:#0e1216; min-width:0; }
-    .col-head { padding:8px 14px; font-size:12px; color:#c9d1d9; border-bottom:1px solid #1c2127; }
-    .calls-list { max-height:200px; overflow-y:auto; padding:8px 14px; }
-    .call .src { font-size:11px; padding:2px 6px; border-radius:6px; background:#161c23; color:#9aa4af; }
-    .call { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid #171c22; font-size:13px; }
-    .call .badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; }
-    .badge.WIN { background:#0f2f28; color:#5fd3bd; } .badge.LOSS { background:#33161a; color:#ff8b8b; } .badge.OPEN { background:#2a2410; color:#e6c34a; }
-    .call .dir { font-weight:700; } .call .dir.BUY { color:#26a69a; } .call .dir.SELL { color:#ef5350; }
-  </style>
+  .grid{display:grid; grid-template-columns:1fr; gap:14px}
+  @media(min-width:860px){ .grid{grid-template-columns:1.5fr 1fr} .chartcard{grid-row:span 2} }
+
+  .card{padding:16px}
+  .card h3{margin:0 0 4px; font-size:13px; letter-spacing:.5px; text-transform:uppercase; color:var(--muted); font-weight:700; display:flex; align-items:center; gap:8px}
+  .chart-wrap{position:relative; width:100%; height:340px}
+  @media(min-width:860px){ .chart-wrap{height:460px} }
+  #chart{position:absolute; inset:0}
+  .live{display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--mint)}
+  .live i{width:7px; height:7px; border-radius:50%; background:var(--mint); box-shadow:0 0 0 0 rgba(52,211,153,.6); animation:pulse 1.8s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}70%{box-shadow:0 0 0 8px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+
+  /* the hero verdict */
+  .verdict{text-align:center; padding:22px 16px}
+  .verdict .big{font-size:30px; font-weight:800; letter-spacing:.5px; margin:2px 0}
+  .verdict .sub{font-size:13px; color:var(--muted); line-height:1.5}
+  .price{font-size:15px; color:var(--ink); font-weight:700; margin-bottom:6px}
+  .price small{color:var(--muted); font-weight:500}
+
+  .rowmeter{margin:12px 0}
+  .rowmeter .top{display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px}
+  .rowmeter .top b{font-weight:700}
+  .bar{height:9px; border-radius:20px; background:rgba(148,190,220,.12); overflow:hidden}
+  .bar span{display:block; height:100%; border-radius:20px}
+
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px}
+  .mini{padding:12px; border-radius:14px; background:var(--glass-2); border:1px solid var(--line); text-align:center}
+  .mini .k{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px}
+  .mini .v{font-size:20px; font-weight:800; margin-top:3px}
+
+  .rules div.r{display:flex; gap:8px; padding:6px 0; font-size:13px; align-items:flex-start; border-bottom:1px solid rgba(148,190,220,.07)}
+  .rules .r:last-child{border-bottom:none}
+  .rules .ic{font-weight:800; flex-shrink:0}
+  .rules .d{color:var(--muted); font-size:12px}
+  ul.news{list-style:none; margin:6px 0 0; padding:0}
+  ul.news li{padding:6px 0; font-size:13px; border-bottom:1px solid rgba(148,190,220,.07); line-height:1.4}
+  ul.news a{color:#bcd4e6; text-decoration:none}
+  .foot{color:var(--muted); font-size:11.5px; line-height:1.6; text-align:center; margin-top:22px; padding:0 8px}
+  .muted{color:var(--muted)}
+</style>
 </head>
 <body>
-  <div id="riskBanner" class="risk-banner" style="display:none"></div>
+<div class="wrap">
+  <div id="banner" class="banner"></div>
+
   <header>
-    <h1>⚡ Aegis Trading AI</h1>
+    <div class="logo">❄️ <span>Aegis <b>AI</b></span></div>
+    <span class="pill" id="livePill"><span class="live"><i></i>live</span></span>
     <div class="controls">
-      <select id="symbol" onchange="connect()" title="Crypto or stock">
-        <optgroup label="₿ Crypto (24/7, live)">
-          <option value="BTCUSDT">Bitcoin (BTC)</option>
-          <option value="ETHUSDT">Ethereum (ETH)</option>
+      <select id="symbol" onchange="connect()">
+        <optgroup label="Crypto (24/7)">
+          <option value="BTCUSDT">Bitcoin · BTC</option>
+          <option value="ETHUSDT">Ethereum · ETH</option>
+          <option value="SOLUSDT">Solana · SOL</option>
           <option value="BNBUSDT">BNB</option>
-          <option value="SOLUSDT">Solana (SOL)</option>
           <option value="XRPUSDT">XRP</option>
-          <option value="ADAUSDT">Cardano (ADA)</option>
-          <option value="DOGEUSDT">Dogecoin (DOGE)</option>
-          <option value="AVAXUSDT">Avalanche (AVAX)</option>
-          <option value="LINKUSDT">Chainlink (LINK)</option>
-          <option value="LTCUSDT">Litecoin (LTC)</option>
-          <option value="DOTUSDT">Polkadot (DOT)</option>
-          <option value="TRXUSDT">TRON (TRX)</option>
         </optgroup>
-        <optgroup label="📈 US Stocks (market hours, ~15m delayed)">
-          <option value="AAPL">Apple (AAPL)</option>
-          <option value="TSLA">Tesla (TSLA)</option>
-          <option value="NVDA">NVIDIA (NVDA)</option>
-          <option value="MSFT">Microsoft (MSFT)</option>
-          <option value="AMZN">Amazon (AMZN)</option>
-          <option value="GOOGL">Alphabet (GOOGL)</option>
-          <option value="META">Meta (META)</option>
+        <optgroup label="US Stocks (delayed)">
+          <option value="AAPL">Apple · AAPL</option>
+          <option value="TSLA">Tesla · TSLA</option>
+          <option value="NVDA">Nvidia · NVDA</option>
         </optgroup>
-        <optgroup label="🇮🇳 India / NSE (market hours, delayed)">
+        <optgroup label="India NSE (delayed)">
           <option value="ITC.NS">ITC</option>
           <option value="RELIANCE.NS">Reliance</option>
-          <option value="TCS.NS">TCS</option>
-          <option value="INFY.NS">Infosys</option>
-          <option value="HDFCBANK.NS">HDFC Bank</option>
-          <option value="TATAMOTORS.NS">Tata Motors</option>
         </optgroup>
       </select>
-      <button onclick="connect()">Go Live</button>
+      <select id="tf" onchange="connect()">
+        <option value="1m">1 min</option>
+        <option value="5m">5 min</option>
+        <option value="15m">15 min</option>
+        <option value="1h" selected>1 hour</option>
+        <option value="4h">4 hour</option>
+        <option value="1d">1 day</option>
+      </select>
     </div>
-    <div class="live"><span id="dot" class="dot"></span><span id="status">disconnected</span></div>
-    <div class="price" id="price"></div>
   </header>
 
   <div class="grid">
-    <div>
-      <div class="toolbar">
-        <span class="muted">Show on chart:</span>
-        <label><input type="checkbox" id="tgLevels" checked onchange="applyFilters()"> 📏 Entry/Stop/Target lines</label>
-        <label><input type="checkbox" id="tgCalls" checked onchange="applyFilters()"> 📓 My calls</label>
-        <label><input type="checkbox" id="tgPatterns" onchange="onPatternToggle()"> 🕯️ Candle patterns</label>
-        <select id="patFilter" onchange="loadPatterns()" title="Which patterns to show">
-          <option value="strong">Strong only (reversals)</option>
-          <option value="all">All patterns</option>
-          <option value="bull">Bullish only</option>
-          <option value="bear">Bearish only</option>
-        </select>
-      </div>
-      <div class="chart-wrap">
-        <div id="chart"></div>
-        <div id="callOverlay" style="position:absolute;inset:0;pointer-events:none;z-index:14"></div>
-        <div id="tapPopup" class="tap-popup"></div>
-      </div>
-      <div class="hint">💡 Tap anywhere on the chart — a BUY / SELL choice pops up right there. Pick one; the AI picks its own; watch who wins.</div>
+    <div class="card glass chartcard">
+      <h3>📈 Live chart <span id="liveTag" class="live" style="margin-left:auto"><i></i>streaming</span></h3>
+      <div class="chart-wrap"><div id="chart"></div></div>
     </div>
-    <div>
-      <div class="card" id="panel"><div class="muted">Connecting to live feed…</div></div>
-      <div class="card" id="outcomeCard" style="margin-top:12px">
-        <h4 style="margin-top:0;display:flex;align-items:center;gap:8px">
-          🎯 Outcome Model
-          <span class="muted" style="font-weight:400;font-size:12px">will target hit before stop?</span>
-        </h4>
-        <div id="outcomeBody" class="muted">Checking trade quality…</div>
+
+    <!-- HERO: the combined verdict of both models -->
+    <div class="card glass">
+      <h3>🎯 The verdict <span class="muted" style="margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500" id="vtime"></span></h3>
+      <div class="verdict">
+        <div class="price" id="price">—</div>
+        <div class="big" id="vbig">Loading…</div>
+        <div class="sub" id="vsub">Reading the market with both models…</div>
       </div>
-      <div class="card" id="rulesCard" style="margin-top:12px">
-        <h4 style="margin-top:0;display:flex;align-items:center;gap:8px">
-          ✅ My Rules
-          <span class="muted" style="font-weight:400;font-size:12px">your checklist, enforced</span>
-          <button id="rulesEdit" class="mini" style="margin-left:auto" onclick="toggleRulesEdit()">⚙️ Edit</button>
-        </h4>
-        <div id="rulesBody" class="muted">Checking your rules…</div>
+      <div class="two">
+        <div class="mini"><div class="k">Direction model</div><div class="v" id="dirV">—</div><div class="muted" id="dirC" style="font-size:12px"></div></div>
+        <div class="mini"><div class="k">Outcome model</div><div class="v" id="ocV">—</div><div class="muted" id="ocC" style="font-size:12px"></div></div>
       </div>
-      <div class="card" id="newsCard" style="margin-top:12px">
-        <h4 style="margin-top:0">📰 News &amp; Sentiment</h4>
-        <div id="newsBody" class="muted">Loading headlines…</div>
+      <div class="rowmeter">
+        <div class="top"><span>Chance target is hit before stop</span><b id="ocPct">—</b></div>
+        <div class="bar"><span id="ocBar" style="width:0%"></span></div>
       </div>
+    </div>
+
+    <div class="card glass">
+      <h3>✅ My Rules</h3>
+      <div class="rules" id="rules"><div class="muted">Checking your checklist…</div></div>
+    </div>
+
+    <div class="card glass">
+      <h3>📰 News &amp; sentiment</h3>
+      <div id="news" class="muted">Loading headlines…</div>
     </div>
   </div>
 
-  <div class="calls" id="callsCard">
-    <div class="calls-head">
-      📓 Track Record
-      <span class="muted">⏱ AI predicts on:</span>
-      <select id="tf" onchange="connect()" title="Timeframe the AI predicts &amp; logs on">
-        <option value="1m">1 min</option>
-        <option value="3m">3 min</option>
-        <option value="5m">5 min</option>
-        <option value="15m">15 min</option>
-        <option value="30m">30 min</option>
-        <option value="1h">1 hour</option>
-        <option value="2h">2 hours</option>
-        <option value="4h">4 hours</option>
-        <option value="1d">1 day</option>
-      </select>
-      <label class="switch" title="When ON, the AI keeps predicting on the server — even if you close this website">
-        <input type="checkbox" id="autologSw" onchange="toggleAutolog()">
-        <span class="slider"></span>
-        <span id="autologLbl" class="sw-label">🤖 Auto-log AI: OFF</span>
-      </label>
-      <button onclick="logAiPick()">🤖 Log AI pick now</button>
-      <span style="margin-left:auto"></span>
-      <button onclick="undoLast()">↶ Undo last</button>
-      <button onclick="loadCalls()">↻</button>
-      <button onclick="clearCalls()">Clear</button>
-    </div>
-    <div id="scoreboard" class="scoreboard">🏆 Log some calls to see who wins — AI vs You</div>
-    <div class="calls-cols">
-      <div class="calls-col">
-        <div class="col-head">👆 <b>You</b> <span id="youStat" class="muted"></span></div>
-        <div class="calls-list" id="youList"><div class="muted">Tap the chart to log your calls.</div></div>
-      </div>
-      <div class="calls-col">
-        <div class="col-head">🤖 <b>AI</b> <span id="aiStat" class="muted"></span></div>
-        <div class="calls-list" id="aiList"><div class="muted">AI picks appear here (tap the chart, or turn on Auto-log).</div></div>
-      </div>
-    </div>
+  <div class="foot">
+    Aegis is a <b>learning &amp; practice</b> tool. Two models run every call: a direction model
+    (~59–61% accurate — wrong ~40% of the time, by design) and an outcome model that vetoes weak
+    trades. It places <b>no orders</b> and is <b>break-even</b> after fees. Never trade real money on it.
   </div>
-
-  <div class="chat">
-    <div class="chat-head">🤖 Trade Assistant <span class="muted" id="chatctx"></span></div>
-    <div class="chat-log" id="log"></div>
-    <div class="quick">
-      <button onclick="ask('Where do I trade?')">Where do I trade?</button>
-      <button onclick="ask('Should I buy or sell?')">Buy or sell?</button>
-      <button onclick="ask('Why wait?')">Why wait?</button>
-      <button onclick="ask('What is my stop and risk?')">Stop &amp; risk</button>
-      <button onclick="ask('What are the targets?')">Targets</button>
-    </div>
-    <div class="chat-in">
-      <input id="chatbox" placeholder="Ask about a trade… or tap the chart" onkeydown="if(event.key==='Enter')ask()" />
-      <button onclick="ask()">Send</button>
-    </div>
-  </div>
+</div>
 
 <script>
-const COLORS = { green:'#26a69a', red:'#ef5350', yellow:'#c9a227' };
-const chart = LightweightCharts.createChart(document.getElementById('chart'), {
-  layout: { background: { color: '#0b0e11' }, textColor: '#c9d1d9' },
-  grid: { vertLines: { color: '#161b22' }, horzLines: { color: '#161b22' } },
-  timeScale: { timeVisible: true, secondsVisible: false },
-  rightPriceScale: { borderColor: '#1c2127' },
-});
-const series = chart.addCandlestickSeries({
-  upColor:'#26a69a', downColor:'#ef5350', wickUpColor:'#26a69a', wickDownColor:'#ef5350', borderVisible:false,
-});
+let ws=null, chart=null, series=null, curSymbol='BTCUSDT', curTf='1h', lastBarTime=0, barInterval=60;
+const $=id=>document.getElementById(id);
+const toSec=iso=>Math.floor(new Date(iso).getTime()/1000);
+const fmt=n=>{const a=Math.abs(n); const d=a>=1000?0:a>=1?2:6; return '$'+Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});};
 
-let ws = null, curSymbol = 'BTCUSDT', curTf = '1m', priceLines = [];
-let patternMarkers = [], callMarkers = [], lastLevels = [], lastBarTime = 0, barInterval = 60;
-const toSec = iso => Math.floor(new Date(iso).getTime() / 1000);
-const fmtPrice = p => p == null ? '' : Number(p).toLocaleString(undefined, {maximumFractionDigits: 2});
-
-/* ---- chart filters (toggle features so the graph stays clean) ---- */
-const tg = id => { const el = document.getElementById(id); return el ? el.checked : false; };
-const STRONG_PATTERNS = new Set(['Hammer','Shooting Star','Bullish Engulfing','Bearish Engulfing',
-  'Morning Star','Evening Star','Tweezer Top','Tweezer Bottom','Bullish Harami','Bearish Harami']);
-
-function refreshMarkers() {
-  const pats = tg('tgPatterns') ? patternMarkers : [];
-  const calls = tg('tgCalls') ? callMarkers : [];
-  try {
-    series.setMarkers([...pats, ...calls].filter(m => m.time).sort((a, b) => a.time - b.time));
-  } catch (e) { console.warn('marker render skipped:', e.message); }
+/* ---------- chart ---------- */
+function initChart(){
+  const el=$('chart'); el.innerHTML='';
+  chart=LightweightCharts.createChart(el,{
+    layout:{background:{color:'transparent'}, textColor:'#8aa4b8', fontFamily:'inherit'},
+    grid:{vertLines:{color:'rgba(148,190,220,.06)'}, horzLines:{color:'rgba(148,190,220,.06)'}},
+    rightPriceScale:{borderColor:'rgba(148,190,220,.12)'},
+    timeScale:{borderColor:'rgba(148,190,220,.12)', timeVisible:true, secondsVisible:false},
+    crosshair:{mode:0},
+    autoSize:true,
+  });
+  series=chart.addCandlestickSeries({
+    upColor:'#34d399', downColor:'#fb7185', borderVisible:false,
+    wickUpColor:'#34d399', wickDownColor:'#fb7185',
+  });
 }
 
-function applyFilters() { drawMarkers(lastLevels); refreshMarkers(); }
-function onPatternToggle() { loadPatterns(); }
+/* ---------- the hero verdict (direction + outcome combined) ---------- */
+function renderVerdict(sig){
+  if(!sig) return;
+  $('price').innerHTML = fmt(sig.risk?.entry_low || sig.entry || lastPrice) + ' <small>'+curSymbol+'</small>';
+  $('vtime').textContent = sig.generated_at ? new Date(sig.generated_at).toLocaleTimeString() : '';
+  const dir = sig.decision; // BUY / SELL / WAIT
+  const conf = Math.round((sig.confidence||0)*100);
+  $('dirV').textContent = dir;
+  $('dirV').style.color = dir==='BUY'?'var(--mint)':dir==='SELL'?'var(--coral)':'var(--ice)';
+  $('dirC').textContent = conf+'% confident';
+  lastDir = dir; lastConf = conf;
+  combine();
+}
+let lastDir='WAIT', lastConf=0, lastPrice=0, lastOutcomeTake=null;
 
-/* ---- news + sentiment: the one signal NOT derived from price ---- */
-async function loadNews() {
-  const body = document.getElementById('newsBody');
-  if (!body) return;
-  try {
-    const n = await (await fetch(`/news?symbol=${curSymbol}&limit=6`)).json();
-    if (!n.headlines || !n.headlines.length) {
-      body.innerHTML = '<div class="muted">No recent headlines for this symbol.</div>';
-      return;
-    }
-    const col = n.score >= 0.12 ? '#26a69a' : n.score <= -0.12 ? '#ef5350' : '#c9a227';
-    const pct = Math.round(Math.abs(n.score) * 100);
-    body.innerHTML = `
-      <div style="font-weight:700;color:${col};font-size:14px;margin-bottom:4px">
-        ${n.emoji} ${n.label} <span class="muted" style="font-weight:400">(${n.score >= 0 ? '+' : ''}${n.score})</span>
-      </div>
-      <div class="bar"><span style="width:${pct}%;background:${col}"></span></div>
-      <ul style="padding-left:16px">${n.headlines.map(h => {
-        const c = h.score > 0.05 ? '#5fd3bd' : h.score < -0.05 ? '#ff8b8b' : '#9aa4af';
-        const tag = h.score > 0.05 ? '▲' : h.score < -0.05 ? '▼' : '•';
-        return `<li style="margin-bottom:5px"><span style="color:${c};font-weight:700">${tag}</span>
-          <a href="${h.link}" target="_blank" style="color:#b8c0c9;text-decoration:none">${h.title}</a></li>`;
-      }).join('')}</ul>
-      <div class="muted" style="font-size:11px">Headlines can move price before the chart reacts — but sentiment is a hint, not a guarantee.</div>`;
-  } catch (e) {
-    body.innerHTML = '<div class="muted">Could not load news.</div>';
+function combine(){
+  // The honest 2-model gate: a trade only shows green/red if BOTH agree.
+  const dir=lastDir, take=lastOutcomeTake;
+  let big, col, sub;
+  if(dir==='WAIT'){
+    big='WAIT'; col='var(--ice)';
+    sub='The direction model sees no strong setup right now. Sitting out is a position.';
+  } else if(take===false){
+    big='WAIT'; col='var(--ice)';
+    sub='Direction leans '+dir+', but the outcome model VETOed it — this setup historically doesn’t reach target before stop.';
+  } else if(take===true){
+    big='CONSIDER '+dir; col=dir==='BUY'?'var(--mint)':'var(--coral)';
+    sub='Both models agree. Still your call — use a stop, risk ≤1%, and remember it’s break-even overall.';
+  } else {
+    big=dir; col=dir==='BUY'?'var(--mint)':'var(--coral)';
+    sub='Direction leans '+dir+'. Waiting on the outcome model…';
   }
+  $('vbig').textContent=big; $('vbig').style.color=col; $('vsub').textContent=sub;
 }
 
-/* ---- The honest banner. Driven by config, so it can't drift out of sync. ---- */
-async function loadRiskNotice() {
-  const el = document.getElementById('riskBanner');
-  try {
-    const j = await (await fetch('/risk-notice')).json();
-    if (!j.learning_mode) { el.style.display = 'none'; return; }
-    el.innerHTML = `<b>⚠️ ${j.headline}</b><div class="sub">${j.detail}</div>`;
-    el.style.display = 'block';
-  } catch (e) { /* a missing banner must never break the dashboard */ }
+/* ---------- outcome model ---------- */
+async function loadOutcome(){
+  try{
+    const j=await (await fetch(`/outcome?symbol=${curSymbol}&timeframe=${curTf}`)).json();
+    if(!j.available){ $('ocV').textContent='—'; $('ocC').textContent='not trained'; lastOutcomeTake=null; combine(); return; }
+    const pct=Math.round(j.p_target*100);
+    lastOutcomeTake=j.take;
+    $('ocV').textContent = j.take?'TAKE':'VETO';
+    $('ocV').style.color = j.take?'var(--mint)':'var(--coral)';
+    $('ocC').textContent = pct+'% to target';
+    $('ocPct').textContent = pct+'%  (needs ≥'+Math.round(j.threshold*100)+'%)';
+    const bar=$('ocBar'); bar.style.width=pct+'%';
+    bar.style.background = j.take?'linear-gradient(90deg,#34d399,#7dd3fc)':'linear-gradient(90deg,#fb7185,#fbbf24)';
+    combine();
+  }catch(e){ $('ocV').textContent='—'; }
 }
 
-/* ---- Outcome model: the verified trade-selection veto layer ---- */
-async function loadOutcome() {
-  const body = document.getElementById('outcomeBody');
-  if (!body) return;
-  try {
-    const j = await (await fetch(`/outcome?symbol=${curSymbol}&timeframe=${curTf}`)).json();
-    if (!j.available) {
-      body.innerHTML = '<div class="muted">Outcome model not trained yet.</div>';
-      return;
-    }
-    const pct = Math.round(j.p_target * 100);
-    const take = j.take;
-    const col = take ? '#26a69a' : '#ef5350';
-    const icon = take ? '🟢 TAKE' : '🔴 VETO';
-    const thr = Math.round(j.threshold * 100);
-    body.innerHTML = `
-      <div style="font-weight:700;color:${col};font-size:15px">${icon}</div>
-      <div style="margin:6px 0 4px;font-size:13px">
-        P(target hit before stop): <b style="color:${col}">${pct}%</b>
-        <span class="muted">(needs ≥ ${thr}%)</span>
-      </div>
-      <div class="bar"><span style="width:${pct}%;background:${col}"></span></div>
-      <div class="muted" style="font-size:12px;margin-top:6px">
-        Direction says <b>${j.direction}</b> (${Math.round(j.direction_confidence*100)}%), but this
-        layer judges whether the trade actually <b>reaches its target before its stop</b>.
-        ${take ? 'This setup historically pays — worth considering.'
-               : 'This setup historically does NOT reach target first — skip it.'}
-      </div>
-      <div class="muted" style="font-size:11px;margin-top:5px">
-        The one layer that turned break-even into a positive edge in backtests
-        (verified on the untouched final test). Still needs live proof — paper-trade it.
-      </div>`;
-  } catch (e) { body.innerHTML = '<div class="muted">Could not check the outcome model.</div>'; }
+/* ---------- rules ---------- */
+async function loadRules(){
+  try{
+    const j=await (await fetch(`/rules/check?symbol=${curSymbol}&timeframe=${curTf}`)).json();
+    const el=$('rules');
+    if(!j.results||!j.results.length){ el.innerHTML='<div class="muted">No rules enabled.</div>'; return; }
+    const ic={pass:'<span style="color:var(--mint)">✔</span>',fail:'<span style="color:var(--coral)">✘</span>','n/a':'<span class="muted">–</span>'};
+    const head=`<div style="font-weight:700;margin-bottom:6px;color:${j.obeys?'var(--mint)':(j.has_trade===false?'var(--ice)':'var(--coral)')}">${j.verdict}</div>`;
+    el.innerHTML=head + j.results.filter(r=>r.enabled).map(r=>`
+      <div class="r"><span class="ic">${ic[r.status]}</span><span>${r.label}<div class="d">${r.detail}</div></span></div>`).join('');
+  }catch(e){ $('rules').innerHTML='<div class="muted">Could not check rules.</div>'; }
 }
 
-/* ---- My Rules: your checklist, enforced. Discipline, not prediction. ---- */
-let rulesEditing = false;
-function toggleRulesEdit() { rulesEditing = !rulesEditing; loadRules(); }
-
-async function setRule(id, enabled, value) {
-  const q = new URLSearchParams({ rule_id: id });
-  if (enabled !== null && enabled !== undefined) q.set('enabled', enabled);
-  if (value !== null && value !== undefined && value !== '') q.set('value', value);
-  await fetch('/rules?' + q.toString(), { method: 'POST' });
-  loadRules();
-}
-async function resetRules() { await fetch('/rules/reset', { method: 'POST' }); loadRules(); }
-
-async function loadRules() {
-  const body = document.getElementById('rulesBody');
-  if (!body) return;
-  document.getElementById('rulesEdit').textContent = rulesEditing ? '✔ Done' : '⚙️ Edit';
-
-  if (rulesEditing) {                                  // ---- settings view ----
-    try {
-      const j = await (await fetch('/rules')).json();
-      body.innerHTML = j.rules.map(r => `
-        <div style="padding:7px 0;border-bottom:1px solid #1e2732">
-          <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
-            <input type="checkbox" ${r.enabled ? 'checked' : ''} style="margin-top:3px"
-                   onchange="setRule('${r.id}', this.checked, null)">
-            <span>
-              <span style="color:#e6edf3;font-weight:600">${r.label}</span>
-              ${r.tweakable ? `<input type="number" value="${r.value}" step="0.1" title="Your threshold"
-                   style="width:62px;margin-left:6px;background:#0d1117;border:1px solid #2a3440;color:#e6edf3;border-radius:5px;padding:1px 5px"
-                   onchange="setRule('${r.id}', null, this.value)"> <span class="muted">${r.unit}</span>` : ''}
-              <div class="muted" style="font-size:11px;margin-top:2px">${r.why}</div>
-            </span>
-          </label>
-        </div>`).join('') +
-        `<button class="mini" style="margin-top:8px" onclick="resetRules()">↺ Reset to sensible defaults</button>`;
-    } catch (e) { body.innerHTML = '<div class="muted">Could not load your rules.</div>'; }
-    return;
-  }
-
-  try {                                                // ---- verdict view ----
-    const j = await (await fetch(`/rules/check?symbol=${curSymbol}&timeframe=${curTf}`)).json();
-    if (!j.results || !j.results.length) { body.innerHTML = '<div class="muted">No rules switched on. Hit ⚙️ Edit.</div>'; return; }
-    const waiting = j.has_trade === false;
-    const ok = j.obeys;
-    const col = waiting ? '#c9a227' : ok ? '#26a69a' : '#ef5350';
-    const dot = waiting ? '⏸' : ok ? '🟢' : '🔴';
-    const icon = { pass: '<span style="color:#26a69a">✔</span>', fail: '<span style="color:#ef5350">✘</span>', 'n/a': '<span class="muted">–</span>' };
-    body.innerHTML = `
-      <div style="font-weight:700;color:${col};font-size:14px">${dot} ${j.verdict}</div>
-      <div class="muted" style="font-size:12px;margin:3px 0 8px">${j.advice}</div>
-      ${j.results.filter(r => r.enabled).map(r => `
-        <div style="display:flex;gap:7px;padding:4px 0;align-items:flex-start;font-size:12px">
-          <span style="font-weight:700">${icon[r.status]}</span>
-          <span>
-            <span style="color:${r.status === 'fail' ? '#ff8b8b' : '#b8c0c9'}">${r.label}</span>
-            <div class="muted" style="font-size:11px">${r.detail}</div>
-          </span>
-        </div>`).join('')}
-      <div class="muted" style="font-size:11px;margin-top:6px">This is a <b>discipline</b> tool. It won't make the AI smarter — it stops you taking the trades you already know you shouldn't.</div>`;
-  } catch (e) { body.innerHTML = '<div class="muted">Could not check your rules.</div>'; }
+/* ---------- news ---------- */
+async function loadNews(){
+  try{
+    const n=await (await fetch(`/news?symbol=${curSymbol}&limit=5`)).json();
+    const el=$('news');
+    if(!n.headlines||!n.headlines.length){ el.innerHTML='<div class="muted">No recent headlines.</div>'; return; }
+    const col=n.score>=.12?'var(--mint)':n.score<=-.12?'var(--coral)':'var(--amber)';
+    el.innerHTML=`<div style="font-weight:700;color:${col};margin-bottom:6px">${n.emoji} ${n.label} <span class="muted" style="font-weight:500">(${n.score>=0?'+':''}${n.score})</span></div>
+      <ul class="news">${n.headlines.map(h=>{const c=h.score>.05?'var(--mint)':h.score<-.05?'var(--coral)':'var(--muted)';const t=h.score>.05?'▲':h.score<-.05?'▼':'•';
+        return `<li><span style="color:${c};font-weight:800">${t}</span> <a href="${h.link}" target="_blank">${h.title}</a></li>`;}).join('')}</ul>`;
+  }catch(e){ $('news').innerHTML='<div class="muted">Could not load news.</div>'; }
 }
 
-async function loadPatterns() {
-  if (!tg('tgPatterns')) { patternMarkers = []; refreshMarkers(); return; }
-  const mode = document.getElementById('patFilter').value;
-  try {
-    const j = await (await fetch(`/patterns?symbol=${curSymbol}&timeframe=${curTf}&limit=300`)).json();
-    let pats = j.patterns;
-    if (mode === 'strong') pats = pats.filter(p => STRONG_PATTERNS.has(p.name));
-    else if (mode === 'bull') pats = pats.filter(p => p.dir === 'bull');
-    else if (mode === 'bear') pats = pats.filter(p => p.dir === 'bear');
-    patternMarkers = pats.map(p => ({
-      time: p.time,
-      position: p.dir === 'bear' ? 'aboveBar' : 'belowBar',
-      color: p.dir === 'bull' ? '#26a69a' : p.dir === 'bear' ? '#ef5350' : '#7a828c',
-      shape: 'circle',
-      text: p.name,
-    }));
-    refreshMarkers();
-  } catch (e) { /* ignore */ }
+/* ---------- honest banner ---------- */
+async function loadBanner(){
+  try{ const j=await (await fetch('/risk-notice')).json();
+    if(j.learning_mode){ $('banner').innerHTML=`<b>⚠️ ${j.headline}</b><br>${j.detail}`; $('banner').style.display='block'; }
+  }catch(e){}
 }
-const setDot = (cls, text) => {
-  document.getElementById('dot').className = 'dot ' + cls;
-  document.getElementById('status').textContent = text;
-};
 
-/* ---------- live chart feed ---------- */
-function connect() {
-  if (ws) { ws.onclose = null; ws.close(); }
-  curSymbol = document.getElementById('symbol').value.toUpperCase();
-  curTf = document.getElementById('tf').value.trim();
-  document.getElementById('chatctx').textContent = `· ${curSymbol} ${curTf}`;
-  // if auto-log is on, point the server's auto-logger at the new coin/timeframe
-  if (document.getElementById('autologSw')?.checked) {
-    fetch(`/autolog?enabled=true&symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' }).catch(() => {});
-  }
-  loadCalls();
-  loadNews();
-  loadRules();
-  loadOutcome();
-  loadRiskNotice();
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  setDot('', 'connecting…');
-  ws = new WebSocket(`${proto}://${location.host}/ws/signals?symbol=${curSymbol}&timeframe=${curTf}`);
-  ws.onopen = () => setDot('on', `LIVE · ${curSymbol} · ${curTf}`);
-  ws.onclose = () => { setDot('off', 'disconnected — retrying'); setTimeout(connect, 3000); };
-  ws.onerror = () => setDot('off', 'error');
-  ws.onmessage = (ev) => {
-    const msg = JSON.parse(ev.data);
-    if (msg.type === 'history') {
-      const bars = msg.candles.map(c => ({ time: toSec(c.open_time), open:c.open, high:c.high, low:c.low, close:c.close }));
-      lastBarTime = bars.length ? bars[bars.length - 1].time : 0;
-      barInterval = bars.length > 1 ? bars[bars.length - 1].time - bars[bars.length - 2].time : 60;
-      // A little "future" room so you can click slightly ahead in time.
-      const future = [];
-      for (let i = 1; i <= 15; i++) future.push({ time: lastBarTime + barInterval * i });
-      series.setData(bars.concat(future));
+/* ---------- live feed ---------- */
+function connect(){
+  curSymbol=$('symbol').value; curTf=$('tf').value;
+  if(ws){ try{ws.close();}catch(e){} }
+  initChart();
+  loadBanner(); loadOutcome(); loadRules(); loadNews();
+  const proto=location.protocol==='https:'?'wss':'ws';
+  ws=new WebSocket(`${proto}://${location.host}/ws/signals?symbol=${curSymbol}&timeframe=${curTf}`);
+  ws.onmessage=ev=>{
+    const msg=JSON.parse(ev.data);
+    if(msg.type==='history'){
+      const bars=msg.candles.map(c=>({time:toSec(c.open_time),open:c.open,high:c.high,low:c.low,close:c.close}));
+      series.setData(bars);
+      if(bars.length){ lastBarTime=bars[bars.length-1].time; lastPrice=bars[bars.length-1].close;
+        if(bars.length>1) barInterval=bars[bars.length-1].time-bars[bars.length-2].time; }
       chart.timeScale().fitContent();
-      loadPatterns();   // draw candlestick pattern markers
-      loadCalls();      // draw logged calls + win rate
-    } else if (msg.type === 'candle') {
-      const c = msg.candle;
-      const t = toSec(c.open_time);
-      // Guard: never feed an older bar than the last one (happens on reconnect) —
-      // Lightweight Charts throws "Cannot update oldest data" otherwise.
-      if (t >= lastBarTime) {
-        series.update({ time: t, open:c.open, high:c.high, low:c.low, close:c.close });
-        lastBarTime = t;
-      }
-      document.getElementById('price').textContent = Number(c.close).toLocaleString();
-      renderCallOverlay();   // keep the You/AI dots glued as the scale shifts
-    } else if (msg.type === 'signal') {
-      renderSignal(msg.signal);
-      loadCalls();   // re-score every call live as the new candle prints
+    } else if(msg.type==='candle'){
+      const c=msg.candle, t=toSec(c.open_time);
+      if(t>=lastBarTime){ series.update({time:t,open:c.open,high:c.high,low:c.low,close:c.close}); lastBarTime=t; lastPrice=c.close;
+        $('price').innerHTML=fmt(c.close)+' <small>'+curSymbol+'</small>'; }
+    } else if(msg.type==='signal'){
+      renderVerdict(msg.signal);
+      loadOutcome(); loadRules();
     }
   };
+  ws.onclose=()=>{ $('liveTag').style.opacity=.3; };
+  ws.onopen=()=>{ $('liveTag').style.opacity=1; };
 }
 
-/* ---------- signal panel ---------- */
-function bar(v, color){ return `<div class="bar"><span style="width:${Math.round(v*100)}%;background:${color}"></span></div>`; }
-function renderSignal(p) {
-  const risk = p.risk, panel = document.getElementById('panel');
-  panel.classList.remove('flash'); void panel.offsetWidth; panel.classList.add('flash');
-  panel.innerHTML = `
-    <div class="decision ${p.decision}">${p.decision}</div>
-    <div class="muted">${p.market_status} · trend ${p.trend_strength} · ${new Date(p.generated_at).toLocaleTimeString()}</div>
-    <h4>Confidence — ${Math.round(p.confidence*100)}%</h4>
-    ${bar(p.confidence, p.confidence >= 0.8 ? '#26a69a' : '#c9a227')}
-    ${risk ? `
-      <div class="row"><span>Entry</span><span>${risk.entry_low} – ${risk.entry_high}</span></div>
-      <div class="row"><span>Stop</span><span>${risk.stop_loss}</span></div>
-      <div class="row"><span>TP1 / TP2</span><span>${risk.take_profit_1} / ${risk.take_profit_2}</span></div>
-      <div class="row"><span>R:R</span><span>1 : ${risk.risk_reward}</span></div>
-      <div class="row"><span>Size</span><span>${risk.position_size} (${risk.account_risk_pct}%)</span></div>` : ''}
-    ${(p.patterns && p.patterns.length) ? `<h4>🕯️ Candle patterns spotted</h4><ul>${p.patterns.map(x=>`<li>${x}</li>`).join('')}</ul>` : ''}
-    <h4>✅ What I'm seeing</h4><ul>${p.reasons.map(x=>`<li>${x}</li>`).join('')}</ul>
-    <h4>⚠️ Watch out for</h4><ul>${(p.risks.length?p.risks:['Nothing major right now']).map(x=>`<li>${x}</li>`).join('')}</ul>
-    <div class="muted" style="margin-top:10px">${p.final_recommendation}</div>`;
-  if (risk) drawMarkers([
-    { price:(risk.entry_low+risk.entry_high)/2, color:'green', label:'Entry' },
-    { price:risk.stop_loss, color:'red', label:'Stop' },
-    { price:risk.take_profit_1, color:'green', label:'TP1' },
-    { price:risk.take_profit_2, color:'green', label:'TP2' },
-  ]);
-}
-
-/* ---------- chart level markers (entry/stop/target lines) ---------- */
-function drawMarkers(markers) {
-  lastLevels = markers || lastLevels;
-  priceLines.forEach(l => series.removePriceLine(l));
-  priceLines = [];
-  if (!tg('tgLevels')) return;             // hidden by the filter toggle
-  (lastLevels || []).forEach(m => {
-    priceLines.push(series.createPriceLine({
-      price: m.price,
-      color: COLORS[m.color] || '#888',
-      lineWidth: m.style === 'marker' ? 3 : 2,
-      lineStyle: m.style === 'marker' ? LightweightCharts.LineStyle.Solid : LightweightCharts.LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: m.label,
-    }));
-  });
-}
-
-/* ---------- chat ---------- */
-function addMsg(text, who) {
-  const log = document.getElementById('log');
-  const div = document.createElement('div');
-  div.className = 'msg ' + who;
-  div.innerHTML = text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
-}
-
-async function ask(message, price, tapTime) {
-  const box = document.getElementById('chatbox');
-  message = message || box.value.trim();
-  if (!message && price == null) return;
-  box.value = '';
-  addMsg(price != null ? `${message} (@ ${price.toFixed(2)})` : message, 'user');
-  addMsg('…', 'bot');
-  const log = document.getElementById('log');
-  try {
-    const r = await fetch('/chat', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ symbol:curSymbol, timeframe:curTf, message, price })
-    });
-    const data = await r.json();
-    log.lastChild.remove();
-    addMsg(data.reply, 'bot');
-    if (data.markers && data.markers.length) drawMarkers(data.markers);
-  } catch (e) {
-    log.lastChild.remove();
-    addMsg('⚠️ Could not reach the assistant.', 'bot');
-  }
-}
-
-/* ---------- Ask the human BUY or SELL, then run You vs AI ---------- */
-let pendingTap = null;
-const postCall = (body) => fetch('/calls', {
-  method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
-});
-
-function showTapPopup(x, y, entry, time) {
-  time = Math.floor(time);
-  pendingTap = { entry, time };
-  const future = time > lastBarTime;
-  const when = new Date(time * 1000).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
-  const el = document.getElementById('tapPopup');
-  el.innerHTML = `<span class="x" onclick="hideTapPopup()">✕</span>
-    <div class="ttl">Your bet @ ${fmtPrice(entry)}<br>
-      <span style="color:#7a828c;font-size:10px">${future ? '⏩ ' : '🕐 '}${when}${future ? ' (future)' : ''}</span></div>
-    <div class="btns">
-      <button class="buy" onclick="humanBet('BUY')">📈 UP</button>
-      <button class="sell" onclick="humanBet('SELL')">📉 DOWN</button>
-    </div>`;
-  // Keep the popup inside the chart bounds.
-  const cw = document.getElementById('chart').clientWidth;
-  el.style.left = Math.max(60, Math.min(x, cw - 60)) + 'px';
-  el.style.top = Math.max(50, y) + 'px';
-  el.style.display = 'block';
-}
-
-function hideTapPopup() {
-  document.getElementById('tapPopup').style.display = 'none';
-  pendingTap = null;
-}
-
-async function humanBet(side) {
-  if (!pendingTap) return;
-  const { entry, time } = pendingTap;
-  pendingTap = null;
-  document.getElementById('tapPopup').style.display = 'none';
-  try {
-    // One fair round: both bet against a SHARED band -> they settle together.
-    const r = await fetch(`/round?symbol=${curSymbol}&timeframe=${curTf}&clicked_time=${time}&entry=${entry}&human_side=${side}`, { method:'POST' });
-    const d = await r.json();
-    const when = new Date(time * 1000).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
-    addMsg(`✅ Round set at <b>${fmtPrice(entry)}</b> (${when}): 👆 You bet <b>${side}</b> vs 🤖 AI bet <b>${d.ai_side}</b>. ` +
-           (d.agree ? '🤝 You agree — both win or lose together.'
-                    : `⚔️ You disagree! If price hits <b>${fmtPrice(d.upper)}</b> first, UP wins; if <b>${fmtPrice(d.lower)}</b> first, DOWN wins. One of you WILL win.`), 'bot');
-    loadCalls();
-  } catch (e) { addMsg('⚠️ Could not set the round — try again.', 'bot'); }
-}
-
-const wrText = s => s.win_rate_pct == null
-  ? `${s.total} logged, none closed yet`
-  : `${s.win_rate_pct}% win · ${s.wins}W/${s.losses}L/${s.open} open · avg ${s.expectancy_r}R`;
-
-/* head-to-head: who's winning, AI or You */
-function renderScoreboard(ai, you) {
-  const el = document.getElementById('scoreboard');
-  const aiR = ai.win_rate_pct, youR = you.win_rate_pct;
-  if (aiR == null && youR == null) {
-    el.textContent = '🏆 Log some calls to see who wins — AI vs You';
-    el.style.color = '#9aa4af'; return;
-  }
-  if (aiR == null) { el.innerHTML = `🤖 AI ${youWaiting('You', you)} — 👆 You leading so far at <b>${youR}%</b>`; el.style.color = '#5fd3bd'; return; }
-  if (youR == null) { el.innerHTML = `🤖 AI leading so far at <b>${aiR}%</b> — 👆 You ${youWaiting('AI', you)}`; el.style.color = '#5fd3bd'; return; }
-  // both have results: compare win rate, tiebreak on expectancy
-  let msg, color;
-  const better = (a, b) => a.win_rate_pct !== b.win_rate_pct ? a.win_rate_pct - b.win_rate_pct : a.expectancy_r - b.expectancy_r;
-  const d = better(ai, you);
-  if (d > 0)      { msg = `🤖 AI is WINNING — ${aiR}% vs ${youR}% You`;  color = '#5fd3bd'; }
-  else if (d < 0) { msg = `👆 YOU are WINNING — ${youR}% vs ${aiR}% AI`; color = '#26a69a'; }
-  else            { msg = `🤝 Dead heat — both ${aiR}%`; color = '#c9a227'; }
-  el.innerHTML = `🏆 ${msg}`;
-  el.style.color = color;
-}
-const youWaiting = (who, s) => s.open > 0 ? 'still has open trades' : 'has no calls yet';
-
-async function loadCalls() {
-  try {
-    const j = await (await fetch('/calls')).json();
-    const s = j.stats;
-    document.getElementById('youStat').textContent = wrText(s.manual);
-    document.getElementById('aiStat').textContent = wrText(s.ai);
-    renderScoreboard(s.ai, s.manual);
-    // Separate lists so You and AI never get mixed up.
-    renderList('youList', j.calls.filter(c => c.source !== 'ai'), 'Tap the chart to log your calls.');
-    renderList('aiList',  j.calls.filter(c => c.source === 'ai'), 'AI picks appear here (tap the chart, or turn on Auto-log).');
-    currentCalls = j.calls;
-    renderCallOverlay();
-  } catch (e) { /* ignore */ }
-}
-
-function renderList(id, calls, emptyMsg) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (!calls.length) { el.innerHTML = `<div class="muted">${emptyMsg}</div>`; return; }
-  el.innerHTML = calls.map(c => `
-    <div class="call">
-      <span class="badge ${c.status}">${c.status === 'WIN' ? '✓' : c.status === 'LOSS' ? '✗' : '…'}</span>
-      <span class="dir ${c.side}">${c.side === 'BUY' ? 'BUY ▲' : 'SELL ▼'}</span>
-      <span>@ ${fmtPrice(c.entry)}</span>
-      <span class="muted" style="margin-left:auto">${new Date(c.created_at).toLocaleTimeString()}</span>
-    </div>`).join('');
-}
-
-/* place each logged call at its precise (time, price) point on the chart */
-let currentCalls = [];
-function renderCallOverlay() {
-  const ov = document.getElementById('callOverlay');
-  if (!ov) return;
-  ov.innerHTML = '';
-  const ts = chart.timeScale();
-  currentCalls.filter(c => c.symbol === curSymbol && c.timeframe === curTf).forEach(c => {
-    const x = ts.timeToCoordinate(c.clicked_time);
-    const y = series.priceToCoordinate(c.entry);
-    if (x == null || y == null) return;                       // off-screen
-    const buy = c.side === 'BUY';
-    const who = c.source === 'ai' ? '🤖AI' : '👆You';
-    const out = c.status === 'WIN' ? ' ✓' : c.status === 'LOSS' ? ' ✗' : '';
-    const color = c.status === 'WIN' ? '#26a69a' : c.status === 'LOSS' ? '#ef5350' : (buy ? '#26a69a' : '#ef5350');
-    // You and AI enter at the SAME point — offset them so both are visible
-    // (AI sits just above the point, You just below).
-    const dy = c.source === 'ai' ? -13 : 13;
-    const tag = document.createElement('div');
-    tag.style.cssText = `position:absolute;left:${x}px;top:${y + dy}px;transform:translate(-50%,-50%);` +
-      `background:${color};color:#04120f;font-size:9.5px;font-weight:700;` +
-      `border-radius:5px;padding:1px 5px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.5);` +
-      `opacity:${c.status === 'OPEN' ? .9 : 1}`;
-    tag.textContent = `${who}${buy ? '▲' : '▼'}${out}`;
-    ov.appendChild(tag);
-  });
-}
-/* keep the dots glued to their spot as you pan/zoom or new candles arrive */
-chart.timeScale().subscribeVisibleTimeRangeChange(renderCallOverlay);
-
-async function logAiPick() {
-  await fetch(`/calls/ai?symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' });
-  loadCalls();
-}
-
-/* ---- auto-log lives on the SERVER: it keeps predicting even if you close this page ---- */
-function setAutologUI(on) {
-  const sw = document.getElementById('autologSw');
-  const lbl = document.getElementById('autologLbl');
-  if (sw) sw.checked = !!on;
-  if (lbl) lbl.textContent = on ? '🤖 Auto-log AI: ON' : '🤖 Auto-log AI: OFF';
-}
-
-async function toggleAutolog() {
-  const on = document.getElementById('autologSw').checked;
-  await fetch(`/autolog?enabled=${on}&symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' });
-  setAutologUI(on);
-  if (on) {
-    await fetch(`/calls/ai?symbol=${curSymbol}&timeframe=${curTf}`, { method: 'POST' }); // first pick now
-    addMsg(`🤖 Auto-log ON — the AI now predicts <b>${curSymbol}</b> every <b>${curTf}</b>, on the server. ` +
-           `It keeps logging even if you close this website.`, 'bot');
-    loadCalls();
-  } else {
-    addMsg('🤖 Auto-log OFF — the AI has stopped logging.', 'bot');
-  }
-}
-
-async function syncAutolog() {
-  try {
-    const cfg = await (await fetch('/autolog')).json();
-    setAutologUI(cfg.enabled);
-  } catch (e) { /* ignore */ }
-}
-syncAutolog();
-
-/* keep the log + graph fresh automatically — re-score every 8s, no refresh needed */
-setInterval(loadCalls, 8000);
-/* headlines change slowly — refresh every 3 minutes */
-setInterval(loadNews, 180000);
-/* re-score your checklist against the live setup every 20s */
-setInterval(() => { if (!rulesEditing) loadRules(); }, 20000);
-/* re-score the outcome model on the live setup every 20s */
+/* refresh the model reads periodically (news slower) */
 setInterval(loadOutcome, 20000);
-
-async function clearCalls() {
-  await fetch('/calls', { method: 'DELETE' });
-  loadCalls();
-}
-
-async function undoLast() {
-  // Remove the last round (You + AI = 2 calls).
-  await fetch('/calls/recent?count=2', { method: 'DELETE' });
-  loadCalls();
-}
-
-/* tap the chart → pop up a BUY/SELL choice right at the click spot */
-chart.subscribeClick(param => {
-  if (!param.point) return;
-  const price = series.coordinateToPrice(param.point.y);
-  if (price == null) return;
-  // Exact time under the click (works on candles AND in the future slots),
-  // instead of snapping to the current candle.
-  let t = param.time;
-  if (t == null) { try { t = chart.timeScale().coordinateToTime(param.point.x); } catch (e) {} }
-  if (t == null) t = lastBarTime;
-  showTapPopup(param.point.x, param.point.y, price, t);
-});
-
+setInterval(loadRules, 20000);
+setInterval(loadNews, 180000);
 connect();
-addMsg("Hi — I'm your trade co-pilot. Ask me where to enter, or **tap the chart** to test any price (green = long, red = short).", 'bot');
 </script>
 </body>
 </html>
