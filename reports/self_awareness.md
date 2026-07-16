@@ -51,3 +51,23 @@ Filtered trades broken down by condition. A segment where avg R stays clearly po
 - 🟢 **Edge strong:** session (UTC): US 13-21 (+0.192R, n=260)
 - 🔴 **Edge weak / avoid:** direction confidence: low <45% (-0.099R, n=43)
 - 🔴 **Edge weak / avoid:** direction confidence: mid 45-55% (-0.254R, n=104)
+
+---
+
+## Was the confidence gate actionable? Tested → NO (honest)
+
+The dev-data segmentation suggested refusing trades below ~55% direction confidence.
+We tested that on the **untouched final test** (non-overlapping):
+
+| Strategy | Trades | Avg R | Profit factor |
+|---|---|---|---|
+| Outcome filter only | 97 | +0.482 | 2.31 |
+| Outcome + confidence ≥ 0.55 | 94 | +0.482 | 2.31 |
+
+**The gate is redundant** — it removed only 3 trades and changed nothing. The outcome
+model already avoids low-confidence-direction trades on its own; the dev-data pattern
+did not translate into an out-of-sample improvement. So we do **not** add the gate.
+
+This analysis remains valuable for **explainability** (showing *why* a setup is strong
+or weak by condition), but it found no additional tradeable edge. The Outcome Model
+(Phase 3) is the edge; it already captures the confidence effect internally.
