@@ -33,11 +33,11 @@ The individual volumes are authored on approval, in the priority agreed below.
 
 | # | Volume | Scope (one line) | Current state |
 |---|--------|------------------|---------------|
-| 00 | **Executive Summary** | What Aegis is, the one verified edge, the honest limits | 🟡 draft below |
-| 01 | **Vision** | India-first market-intelligence platform; not a bot | 🟡 in README/RESULTS |
-| 02 | **Product Requirements** | User stories, functional + non-functional reqs | 🔴 to write |
-| 03 | **Business Goals** | Who it's for, honesty-as-moat, SEBI posture, monetisation | 🔴 to write |
-| 04 | **System Architecture** | Modular-monolith now → modular services later; data flow | 🟡 partial |
+| 00 | [**Executive Summary**](00-executive-summary.md) | What Aegis is, the one verified edge, the honest limits | ✅ written |
+| 01 | [**Vision**](01-vision.md) | India-first market-intelligence platform; not a bot | ✅ written |
+| 02 | [**Product Requirements**](02-product-requirements.md) | User stories, functional + non-functional reqs | ✅ written |
+| 03 | [**Business Goals**](03-business-goals.md) | Who it's for, honesty-as-moat, SEBI posture, monetisation | ✅ written |
+| 04 | [**System Architecture**](04-system-architecture.md) | Modular-monolith now → modular services later; data flow | ✅ written |
 | 05 | **Prediction Engine** | Calibrated logistic direction model (the core IP) | 🟢 built |
 | 06 | **Outcome Engine** | Target-before-stop meta-labeling (the verified edge) | 🟢 built |
 | 07 | **GPT / Conversation Assistant** | LLM as orchestrator over Aegis services; never predicts | 🟡 basic |
