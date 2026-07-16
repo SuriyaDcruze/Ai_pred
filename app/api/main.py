@@ -237,6 +237,21 @@ async def risk_notice():
     }
 
 
+@app.get("/intelligence")
+async def intelligence(symbol: str = Query(...), timeframe: str = "1d"):
+    """V3 explainable stock intelligence: market state, relative strength, direction,
+    the outcome-model decision, historical similarity, a trade plan, and a plain-English
+    'why' — for one stock. Decision comes from the validated outcome model; the rest is
+    honest context."""
+    import anyio
+
+    from app.intelligence import analyze_stock
+
+    service: AnalysisService = app.state.service
+    horizon = 5 if timeframe == "1d" else 12
+    return await anyio.to_thread.run_sync(lambda: analyze_stock(service, symbol.upper(), timeframe, horizon))
+
+
 @app.get("/screener/nse")
 async def screener_nse():
     """Scan liquid NSE stocks and return today's TAKE setups with buy/sell levels.
