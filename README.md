@@ -29,11 +29,12 @@ Most trading products hide this number. We lead with it.
 
 | Question | Honest answer |
 |----------|---------------|
-| **How often does it guess direction right?** | **~59%** on out-of-sample data (50% = a coin flip). Decent. |
+| **How often does it guess direction right?** | **~59–61%** on out-of-sample data (50% = a coin flip). Decent. |
 | **Does it make money after fees?** | **No — break-even.** 537 trades, average +0.00 per trade, not statistically different from zero. |
-| **Can it reach 90% / guaranteed profit?** | **No. That is impossible.** Anyone claiming it is lying. The realistic ceiling is ~52–59% direction, which is *not* the same as profit. |
+| **Did trying to improve it help?** | **No.** 4 improvement specs, 8 feature groups tested with purged walk-forward — every gain was inside the noise. ~61% is the measured ceiling. |
+| **Can it reach 90% / guaranteed profit?** | **No. That is impossible.** Anyone claiming it is lying. The realistic ceiling is ~59–61% direction, which is *not* the same as profit. |
 
-**Why ~59% right ≠ profitable:** being right about *direction* isn't the same as
+**Why ~60% right ≠ profitable:** being right about *direction* isn't the same as
 being right about *timing*. The model can correctly say "up over the next 12
 candles" and still lose the trade if price dips and hits your stop first — and every
 trade pays ~0.12% in fees that eat a thin edge. So it reads the market decently but
@@ -81,6 +82,9 @@ story is in [`docs/HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md).
 | **Baseline race** (proves which model actually wins) | ✅ | `app/training/baselines.py` |
 | Deep TCN→Transformer (kept as a comparison baseline — it lost) | ✅ | `app/ai/model.py` |
 | **Backtester** (no-lookahead, fees + slippage, significance test) | ✅ | `app/backtest/engine.py` |
+| **Purged walk-forward + challenger pipeline** (fair, leakage-proof feature tests) | ✅ | `app/training/walk_forward.py`, `challenger_compare.py` |
+| **Confidence-bucket analyzer** (is high confidence trustworthy?) | ✅ | `app/evaluation/confidence_analysis.py` |
+| Candidate features (regime, price-action, session, multi-TF, interactions) | ⚗️ tested, all noise | `app/features/` |
 | **Nightly retrain** (champion/challenger — new model must beat old) | ✅ | `app/scripts/nightly_retrain.py` |
 | **Meta-model** (learns which signals win from your Track Record) | ✅ | `app/training/meta.py` |
 | Decision engine (multi-confirmation gate) + risk manager | ✅ | `app/decision/`, `app/risk/` |
@@ -112,11 +116,20 @@ Open **http://localhost:8010/dashboard/**.
 
 ### Reproduce the honesty (no GPU needed)
 ```bash
-python -m app.training.baselines --symbol BTCUSDT --bars 20000   # race the models
-python -m app.ai.calibration     --symbol BTCUSDT                # confidence honesty report
-python -m app.ai.sklearn_model   --symbol BTCUSDT --bars 20000   # train the shipping model (2s, CPU)
+python -m app.training.baselines          --symbol BTCUSDT --bars 20000   # race the models
+python -m app.ai.calibration              --symbol BTCUSDT                # confidence honesty report
+python -m app.ai.sklearn_model            --symbol BTCUSDT --bars 20000   # train the shipping model (2s, CPU)
+python -m app.evaluation.confidence_analysis --symbol BTCUSDT             # is high confidence tradeable?
+python -m app.training.challenger_compare --assets BTCUSDT ETHUSDT SOLUSDT  # test new features honestly
 ```
 The winner saves to `artifacts/sklearn_model.pkl` and is picked up automatically.
+
+**Got an "add these features to hit 65%" idea (from anyone)?** Run it through
+`challenger_compare` — it applies purged walk-forward, an uncertainty gate (a gain
+must beat the ~2.6pp fold noise), a class-balance gate, and leakage tests, then says
+ACCEPT or REJECT. So far **4 improvement specs and 8 feature groups → all REJECT**
+(every gain was noise). See [`docs/RESULTS.md`](docs/RESULTS.md) and [`reports/`](reports/).
+You can test any claim instead of trusting it.
 
 ### Deploy
 See [`docs/DEPLOY_RENDER.md`](docs/DEPLOY_RENDER.md).

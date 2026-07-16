@@ -19,11 +19,17 @@ Each implements `MarketDataProvider` + `ExchangeStream` in `app/stream/`:
 > The AI, decision, and risk layers require **zero changes** to add a venue.
 
 ## Phase 3 — model & training hardening
-- [ ] Probability calibration (temperature scaling / isotonic) on a holdout set.
-- [ ] Backtesting engine with realistic fees/slippage + walk-forward equity curve.
-- [ ] Hyperparameter search (Optuna) over TCN/Transformer dims.
-- [ ] Per-symbol fine-tuning + a symbol-embedding input.
-- [ ] ONNX / TorchScript export for low-latency inference.
+- [x] Probability calibration (isotonic) on a holdout — `app/ai/calibration.py`.
+- [x] Backtesting engine with realistic fees/slippage + significance test.
+- [x] Baseline race + purged walk-forward challenger pipeline.
+- [x] Switched champion to **calibrated logistic regression** (beat the deep net).
+- [x] Cost-aware triple-barrier labels.
+- [ ] **Target-before-stop outcome model** — the best remaining idea; attacks *profit*
+      directly instead of accuracy (which is measured-stuck at ~61%). All tooling exists.
+- [ ] Meta-model training once the Track Record has ~200 resolved calls (auto-log is on).
+- [x] ~~Optuna over TCN/Transformer dims~~ — abandoned; the deep net lost to logistic.
+- [ ] Per-symbol / asset-group models (only if they beat the global model — spec'd,
+      not yet built).
 
 ## Phase 4 — serving & ops
 - [ ] Kafka ingestion path (interface hook is isolated in `stream/`).
@@ -36,8 +42,20 @@ Each implements `MarketDataProvider` + `ExchangeStream` in `app/stream/`:
 - [ ] Replace the static page with a React app (Vite) — the JSON API is stable.
 - [ ] Live WS feed of signals, order book heatmap, open positions, P&L stats.
 
+## The accuracy ceiling (measured, not assumed)
+The honest headline finding of this project: **directional accuracy is stuck at
+~59-61% and does not become profit after fees.** Across 4 improvement specs we tested
+8 feature groups through purged walk-forward — every gain was inside the noise
+(`reports/`). Feature engineering is exhausted as a lever. The remaining honest
+options attack *trade selection*, not prediction: the outcome model and the
+meta-model. See [`RESULTS.md`](RESULTS.md) for the full scoreboard.
+
 ## Known limitations (be honest with users)
-- The heuristic fallback predictor is **indicative only** and never fires a live
-  trade (confidence is capped below the 0.80 gate) until a real model is trained.
+- **It is break-even, not profitable.** Measured across 537 trades. It's a learning
+  and practice tool, not a money-maker. Real-money trading is not recommended.
+- **No broker execution** — no orders are ever placed, no account is ever touched.
+- The heuristic fallback predictor is **indicative only** and only used if no trained
+  model is present.
 - SMC features are causal but swing confirmation lags by the fractal width.
-- No broker execution is included — this is decision-support, not an auto-trader.
+- Stock data (Yahoo) is ~15 min delayed and market-hours only; the model was trained
+  on crypto, so it's even less validated on stocks.

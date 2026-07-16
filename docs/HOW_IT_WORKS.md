@@ -82,9 +82,20 @@ smarter, and that is the whole point.
 - **Nightly retrain** (`app/scripts/nightly_retrain.py`) — champion/challenger: a new
   model must *beat* the incumbent out-of-sample before it's allowed to replace it.
 
+**Feature engineering is exhausted as an accuracy lever.** Four improvement specs
+asked for better features. We built and fairly tested **eight** groups — market
+regime, price-action, session/time, multi-timeframe (4h/1d) fusion, feature
+interactions, and combinations — each through purged walk-forward across BTC/ETH/SOL
+with uncertainty + class-balance + leakage gates. **Every gain landed inside the
+fold-to-fold noise (±~2.6-3.3pp).** The ceiling is ~61%. This is measured, in
+`reports/`, and reproducible with `python -m app.training.challenger_compare`. More
+features will not move it — they just fit more noise.
+
 Beware of anything promising to fix accuracy with a plug-in. Two "TradingView MCP"
 projects were evaluated for this repo; **neither contains a predictive model** —
-they are indicator relays. Data plumbing is not an edge.
+they are indicator relays. Data plumbing is not an edge. If someone hands you a
+"features → 65%" plan, run it through the challenger pipeline before believing it —
+so far the honest answer has been REJECT every time.
 
 ## 8. The one number to trust
 Not the training loss, not a single backtest, not the ~59% on a small test slice —
