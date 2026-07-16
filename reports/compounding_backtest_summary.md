@@ -28,3 +28,19 @@ profit factor (2-3 vs ~1.1), lower drawdown. That *direction* is consistent with
 verified edge. **The edge is real; the magnitude is not.** The trustworthy number
 remains the non-overlapping untouched-final-test expectancy (~+0.48R, PF 2.31), and
 even that needs LIVE forward-testing before real money. A backtest is not a track record.
+
+## Even the honest untouched-only version is still fantasy
+Compounding ONLY the untouched-final-test trades (the most honest slice), with a
+properly-annualized Sharpe and a +0.10R slippage stress:
+
+| Asset | Trades | CAGR | +0.10R slippage CAGR | Max DD | Win | Sharpe |
+|---|---|---|---|---|---|---|
+| BTC | 150 | +843% | +508% | 9% | 69% | 9.7 |
+| ETH | 159 | +1,074% | +638% | 4% | 68% | 10.3 |
+| SOL | 132 | +1,140% | +743% | 2% | 71% | 11.7 |
+
+Still absurd — and *suspiciously identical* across three different assets. That
+consistency is not a triple jackpot; it is the fingerprint of an idealized R-model
+(perfect fills, no gaps/fat-tails, short-sample CAGR extrapolation). **Conclusion: the
+compounding backtest cannot tell us the real return.** Trust only the per-trade edge
+(~+0.48R untouched) and, ultimately, LIVE forward-testing. Do not anchor on any %.
