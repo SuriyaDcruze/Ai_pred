@@ -359,6 +359,10 @@ it is now **wired into the live dashboard** (a TAKE/VETO layer) and powers the
   `GET /intelligence`, dashboard Deep Analysis): market state + relative strength +
   historical similarity + trade plan + plain-English For/Against — the *decision* from
   the validated outcome model, everything else honest context. The transparency layer.
+- ✅ Built **Sector Intelligence** (`app/sector.py`, `GET /sectors`): ranks the 10 NSE
+  sectors by relative strength vs Nifty + momentum, maps each stock to its sector, and
+  folds "sector Strong/Weak, rank N/10" into the analysis For/Against. "Understand the
+  sector before the stock." Context, not edge. 8 tests.
 
 **The one thing still missing — and it's the big one: a live track record.** Every
 positive number is backtest. Immediate next step: **weeks-to-months of paper

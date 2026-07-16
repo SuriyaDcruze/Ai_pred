@@ -371,6 +371,8 @@ async function loadIntel(){
       <div class="mini"><div class="k">Market state</div><div class="v" style="font-size:14px">${ms.trend}</div><div class="muted" style="font-size:11px">${ms.volatility} · ADX ${ms.adx}</div></div>
       <div class="mini"><div class="k">Outcome prob</div><div class="v">${j.outcome_probability!=null?Math.round(j.outcome_probability*100)+'%':'—'}</div><div class="muted" style="font-size:11px">${j.decision}</div></div>`;
     if(rs!=null) h+=`<div class="mini"><div class="k">vs Nifty 50</div><div class="v" style="color:${rs>=0?'var(--mint)':'var(--coral)'};font-size:16px">${rs>=0?'+':''}${rs}%</div><div class="muted" style="font-size:11px">relative strength</div></div>`;
+    if(j.sector&&j.sector.label){const sc=j.sector.label==='Strong'?'var(--mint)':j.sector.label==='Weak'?'var(--coral)':'var(--ice)';
+      h+=`<div class="mini"><div class="k">${j.sector.sector} sector</div><div class="v" style="color:${sc};font-size:16px">${j.sector.label}</div><div class="muted" style="font-size:11px">rank ${j.sector.rank||'?'}/${j.sector.of||'?'}</div></div>`;}
     if(sim) h+=`<div class="mini"><div class="k">Similar setups</div><div class="v" style="font-size:16px">${Math.round(sim.win_rate*100)}%</div><div class="muted" style="font-size:11px">won, ${sim.avg_R>=0?'+':''}${sim.avg_R}R (n=${sim.n})</div></div>`;
     h+=`</div>`;
     if(j.plan){

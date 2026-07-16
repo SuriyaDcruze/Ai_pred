@@ -237,6 +237,17 @@ async def risk_notice():
     }
 
 
+@app.get("/sectors")
+async def sectors(timeframe: str = "1d"):
+    """NSE sector strength ranking (relative to Nifty 50) — sector rotation context.
+    Honest context for decisions, not a standalone signal."""
+    import anyio
+
+    from app.sector import sector_rankings
+
+    return await anyio.to_thread.run_sync(lambda: sector_rankings(timeframe))
+
+
 @app.get("/intelligence")
 async def intelligence(symbol: str = Query(...), timeframe: str = "1d"):
     """V3 explainable stock intelligence: market state, relative strength, direction,

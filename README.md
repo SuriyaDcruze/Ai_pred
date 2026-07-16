@@ -119,6 +119,18 @@ a full, transparent read of any stock — the thing the V3 vision actually asks 
 Every number is real; context is labelled context. This transparency — showing its
 work and telling you when to sit out — is the honest, SEBI-defensible differentiator.
 
+### 🏭 Sector Intelligence — understand the sector before the stock
+
+`GET /sectors` ranks the 10 major NSE sectors (Banking, IT, Auto, Pharma, FMCG,
+Energy, Metal, Realty, Infra, PSU Bank) by **relative strength vs the Nifty 50** and
+momentum, using NSE sector indices (`app/sector.py`). Indian equities move by **sector
+rotation** — a bank-stock long is lower quality when Banking is weak, whatever the
+stock's own chart says. Each stock's sector strength is folded into the Deep Analysis
+card's For/Against factors (e.g. *"IT sector Strong, rank 1/10"*). Like relative
+strength, it is honest **context for decision quality, not a model feature** (we proved
+features don't add edge). It is the "analyse the sector before the stock" layer the
+India-first mandate asks for.
+
 ---
 
 ## 🧠 How the model works, in plain English
@@ -168,6 +180,7 @@ story is in [`docs/HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md).
 | **Outcome model** — trade selection ("target before stop?"), the real edge | ✅ | `app/ai/outcome_model.py` |
 | **🇮🇳 NSE / Groww screener** — which Indian stock to buy, where to sell | ✅ | `app/screener.py` |
 | **🔍 Explainable stock intelligence** (V3 "Groww Assistant") | ✅ | `app/intelligence.py` |
+| **🏭 Sector Intelligence** — NSE sector rotation (Banking/IT/Auto…) as context | ✅ | `app/sector.py` |
 | **Similarity engine** — "similar past setups won X%" (explainability) | ✅ | `app/ai/similarity_engine.py` |
 | **Stocks** — Apple, Tesla, ITC, Reliance… via Yahoo (no API key) | ✅ | `app/stream/yahoo.py` |
 | **News + sentiment** (free RSS, finance lexicon) | ✅ | `app/features/sentiment.py` |

@@ -186,6 +186,16 @@ def analyze_stock(service, symbol: str, interval: str = "1d", horizon: int = 5) 
 
     state = _market_state(row)
     rs_nifty = float(row.get("in_rs_nifty_50", 0.0) or 0.0) * 100
+
+    # sector intelligence (context) — understand the sector before the stock
+    sector_ctx = None
+    if is_nse:
+        try:
+            from app.sector import sector_for_stock
+
+            sector_ctx = sector_for_stock(symbol, interval)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("sector context skipped: %s", exc)
     close = float(df["close"].iloc[-1])
     atr = float(row.get("atr", close * 0.02) or close * 0.02)
 
@@ -210,6 +220,14 @@ def analyze_stock(service, symbol: str, interval: str = "1d", horizon: int = 5) 
 
     pos, neg = _reasons(row, side if side else 1, rs_nifty, state, sim)
 
+    # fold the sector into the For/Against factors
+    if sector_ctx and sector_ctx.get("label") not in (None, "Unknown"):
+        from app.sector import supports
+
+        s = supports(side if side else 1, sector_ctx)
+        msg = f"{sector_ctx['sector']} sector is {sector_ctx['label']} (rank {sector_ctx.get('rank','?')}/{sector_ctx.get('of','?')})"
+        (pos if s == "support" else neg if s == "against" else pos).append(msg)
+
     return {
         "available": True, "symbol": symbol.replace(".NS", ""), "last_price": round(close, 2),
         "recommendation": rec,
@@ -218,6 +236,7 @@ def analyze_stock(service, symbol: str, interval: str = "1d", horizon: int = 5) 
         "outcome_probability": round(verdict["p_target"], 3) if verdict else None,
         "decision": "TAKE" if take else "VETO/WAIT",
         "market_state": state,
+        "sector": sector_ctx,
         "relative_strength_vs_nifty_pct": round(rs_nifty, 2) if nifty is not None else None,
         "historical_similarity": (
             {"win_rate": round(sim["win_rate"], 3), "avg_R": round(sim["avg_R"], 2),
