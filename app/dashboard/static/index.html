@@ -171,6 +171,11 @@
     </div>
 
     <div class="card glass">
+      <h3>🔍 Deep Analysis <button class="chip" style="margin-left:auto" onclick="loadIntel()">Analyze ↻</button></h3>
+      <div id="intel" class="muted" style="font-size:13px">Tap “Analyze” for a full explainable read of the selected symbol (market state, relative strength, historical similarity, the why). ~10s.</div>
+    </div>
+
+    <div class="card glass">
       <h3>✅ My Rules</h3>
       <div class="rules" id="rules"><div class="muted">Checking your checklist…</div></div>
     </div>
@@ -345,6 +350,42 @@ function connect(){
   };
   ws.onclose=()=>{ $('liveTag').style.opacity=.3; };
   ws.onopen=()=>{ $('liveTag').style.opacity=1; };
+}
+
+/* ---------- Deep Analysis: the V3 explainable stock report ---------- */
+async function loadIntel(){
+  const el=$('intel');
+  el.innerHTML='<span class="muted">Analyzing '+curSymbol+'… ~10s ⏳</span>';
+  try{
+    const tf = (curTf==='1d'||curTf==='4h')?curTf:'1d';
+    const j=await (await fetch(`/intelligence?symbol=${curSymbol}&timeframe=${tf}`)).json();
+    if(!j.available){ el.innerHTML='<span class="muted">Could not analyze ('+(j.error||'—')+').</span>'; return; }
+    const rec=j.recommendation;
+    const col=rec==='BUY'?'var(--mint)':rec==='SELL'?'var(--coral)':'var(--ice)';
+    const ms=j.market_state;
+    const rs=j.relative_strength_vs_nifty_pct;
+    const sim=j.historical_similarity;
+    let h=`<div style="font-weight:800;font-size:20px;color:${col}">${rec}${j.leaning!=='—'&&rec==='WAIT'?` <span class="muted" style="font-size:13px;font-weight:600">(leans ${j.leaning})</span>`:''}</div>`;
+    h+=`<div class="muted" style="margin:4px 0 10px">${j.explanation}</div>`;
+    h+=`<div class="two" style="grid-template-columns:1fr 1fr">
+      <div class="mini"><div class="k">Market state</div><div class="v" style="font-size:14px">${ms.trend}</div><div class="muted" style="font-size:11px">${ms.volatility} · ADX ${ms.adx}</div></div>
+      <div class="mini"><div class="k">Outcome prob</div><div class="v">${j.outcome_probability!=null?Math.round(j.outcome_probability*100)+'%':'—'}</div><div class="muted" style="font-size:11px">${j.decision}</div></div>`;
+    if(rs!=null) h+=`<div class="mini"><div class="k">vs Nifty 50</div><div class="v" style="color:${rs>=0?'var(--mint)':'var(--coral)'};font-size:16px">${rs>=0?'+':''}${rs}%</div><div class="muted" style="font-size:11px">relative strength</div></div>`;
+    if(sim) h+=`<div class="mini"><div class="k">Similar setups</div><div class="v" style="font-size:16px">${Math.round(sim.win_rate*100)}%</div><div class="muted" style="font-size:11px">won, ${sim.avg_R>=0?'+':''}${sim.avg_R}R (n=${sim.n})</div></div>`;
+    h+=`</div>`;
+    if(j.plan){
+      const sell=j.leaning==='SELL';
+      h+=`<div class="ticket ${sell?'sell':''}" style="margin-top:10px"><div class="tt" style="color:${sell?'var(--coral)':'var(--mint)'}">${j.leaning} ${j.symbol} · plan</div>
+        <div class="lv"><span>Entry</span><b>₹${j.plan.entry}</b></div>
+        <div class="lv"><span>🛑 Stop</span><b>₹${j.plan.stop}</b></div>
+        <div class="lv"><span>🎯 Target</span><b>₹${j.plan.target1} → ₹${j.plan.target2}</b></div>
+        <div class="lv"><span>R:R · hold</span><b>${j.plan.risk_reward} · ${j.plan.holding}</b></div></div>`;
+    }
+    if(j.positive_factors.length) h+=`<div style="margin-top:10px;font-size:13px"><b style="color:var(--mint)">✔ For:</b> ${j.positive_factors.join(' · ')}</div>`;
+    if(j.negative_factors.length) h+=`<div style="margin-top:5px;font-size:13px"><b style="color:var(--coral)">✘ Against:</b> ${j.negative_factors.join(' · ')}</div>`;
+    h+=`<div class="muted" style="font-size:11px;margin-top:10px">${j.disclaimer}</div>`;
+    el.innerHTML=h;
+  }catch(e){ el.innerHTML='<span class="muted">Analysis failed — try again.</span>'; }
 }
 
 /* ---------- NSE screener: which Indian stock to buy today ---------- */
