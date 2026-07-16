@@ -353,6 +353,12 @@ it is now **wired into the live dashboard** (a TAKE/VETO layer) and powers the
   curve-fit).
 - ✅ **Validated on Indian NSE stocks** — the edge generalises (crypto 1h + NSE daily).
 - ✅ Built the **NSE screener** ("which stock to buy on Groww, where to sell").
+- ✅ Tested **India-specific features** (relative strength vs Nifty, gap, VWAP, 52w) —
+  **no predictive edge** (10th feature experiment); kept for explainability only.
+- ✅ Built the **V3 explainable stock intelligence** (`app/intelligence.py`,
+  `GET /intelligence`, dashboard Deep Analysis): market state + relative strength +
+  historical similarity + trade plan + plain-English For/Against — the *decision* from
+  the validated outcome model, everything else honest context. The transparency layer.
 
 **The one thing still missing — and it's the big one: a live track record.** Every
 positive number is backtest. Immediate next step: **weeks-to-months of paper

@@ -102,6 +102,23 @@ say "outperforming Nifty, near 52-week high" as *context*, not as a model input.
 **The product's moat is transparency + the validated outcome model, not more
 features.**
 
+### 🔍 Explainable stock intelligence (V3 "Groww Assistant")
+
+`GET /intelligence?symbol=RELIANCE.NS` and the dashboard **🔍 Deep Analysis** card give
+a full, transparent read of any stock — the thing the V3 vision actually asks for
+(*"the AI should never behave like a black box"*):
+
+- **Recommendation:** BUY / SELL / **WAIT** — the *decision* from the **validated
+  outcome model** (the real edge), never from context features.
+- **Market state** (rule-based trend + volatility), **relative strength vs Nifty**,
+  **historical similarity** ("similar setups won X%"), a **trade plan**
+  (entry/stop/target/R:R/holding), and **plain-English For / Against factors**.
+- **WAIT is the default** when the outcome model isn't confident — *"fewer
+  high-quality opportunities beat many weak signals."*
+
+Every number is real; context is labelled context. This transparency — showing its
+work and telling you when to sit out — is the honest, SEBI-defensible differentiator.
+
 ---
 
 ## 🧠 How the model works, in plain English
@@ -150,6 +167,7 @@ story is in [`docs/HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md).
 | Live Binance stream (geo-block fallback built in) | ✅ | `app/stream/binance.py` |
 | **Outcome model** — trade selection ("target before stop?"), the real edge | ✅ | `app/ai/outcome_model.py` |
 | **🇮🇳 NSE / Groww screener** — which Indian stock to buy, where to sell | ✅ | `app/screener.py` |
+| **🔍 Explainable stock intelligence** (V3 "Groww Assistant") | ✅ | `app/intelligence.py` |
 | **Similarity engine** — "similar past setups won X%" (explainability) | ✅ | `app/ai/similarity_engine.py` |
 | **Stocks** — Apple, Tesla, ITC, Reliance… via Yahoo (no API key) | ✅ | `app/stream/yahoo.py` |
 | **News + sentiment** (free RSS, finance lexicon) | ✅ | `app/features/sentiment.py` |
