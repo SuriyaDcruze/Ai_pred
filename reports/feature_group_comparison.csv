@@ -1,0 +1,7 @@
+experiment,n_features,mean_wf_acc,acc_std,worst_fold,best_fold,balanced_acc,macro_f1,log_loss,brier,ece,coverage,up_prec,up_rec,down_prec,down_rec,decision,reason
+champion (base),45,0.6101,0.0259,0.575,0.6432,0.413,0.4053,1.0609,0.5046,0.0701,0.9912,0.59,0.581,0.577,0.634,—,champion
++ market regime,56,0.6137,0.0295,0.574,0.6534,0.4168,0.4083,1.0732,0.5057,0.0681,0.9927,0.593,0.577,0.582,0.645,REJECT,gain +0.36pp is within noise (<0.5x fold std 2.59pp)
++ price action,71,0.6003,0.022,0.571,0.6342,0.4096,0.3994,1.0385,0.5044,0.0707,0.9887,0.577,0.604,0.583,0.597,REJECT,mean acc did not improve (-0.98pp)
++ session,58,0.6147,0.0254,0.581,0.6491,0.4202,0.4068,1.0503,0.5059,0.0729,0.9927,0.601,0.559,0.58,0.666,REJECT,gain +0.46pp is within noise (<0.5x fold std 2.59pp); gain looks like class imbalance (UP-rec -0.02 vs DOWN-rec +0.03)
++ regime + price action,82,0.6032,0.0262,0.5764,0.6469,0.4162,0.4068,1.1161,0.5075,0.0691,0.9864,0.585,0.582,0.581,0.623,REJECT,mean acc did not improve (-0.69pp)
++ all groups,95,0.5913,0.0361,0.5325,0.6364,0.4101,0.3975,1.1083,0.5125,0.0813,0.9862,0.58,0.568,0.569,0.614,REJECT,mean acc did not improve (-1.88pp); worst-fold dropped >1pp (-4.25pp)

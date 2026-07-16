@@ -1,0 +1,11 @@
+{
+  "suite": "tests/test_feature_leakage.py",
+  "properties_checked": [
+    "future-invariance",
+    "no shift(-1)",
+    "no centered rolling",
+    "finite values",
+    "cyclical bounds"
+  ],
+  "status": "all passing"
+}
