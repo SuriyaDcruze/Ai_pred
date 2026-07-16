@@ -19,6 +19,7 @@ came from running the code on live market data, out-of-sample, with fees.
 | **Trading result after fees** | **~0% (break-even)** | 537 trades, avg **−0.005R**, t = −0.09 — not different from zero |
 | **High-confidence signals** | **~90% "accurate", but 0 profit** | Looked amazing; didn't survive real stops + fees |
 | **After trying to improve it** | **still ~61%, still break-even** | 4 specs, 8 feature groups tried; every gain was inside the noise |
+| **🟢 Outcome model (trade selection)** | **break-even → +0.22R to +0.48R** | Filtering trades by "target before stop?" — verified on untouched final test (PF 2.31). First real edge. |
 | **Best possible with this approach** | **~59-61% direction, no reliable profit** | Not 70%. Not 90%. Those are impossible here. |
 
 ---
@@ -131,6 +132,27 @@ them through the same purged 5-fold walk-forward gauntlet.
 > an accuracy lever.** The measured ceiling for this approach is ~61%. More features
 > just fit more noise. This is a real finding, arrived at honestly.
 
+### 9. 🟢 The Outcome Model — the FIRST verified edge (target-before-stop)
+Instead of predicting direction better (stuck), we built a **second, independent
+model** that predicts *"will this trade hit its target before its stop?"* and vetoes
+the likely losers. This attacks the real gap — accuracy ≠ profit — head on.
+
+| Test | Take every signal | **Filtered by outcome model** |
+|---|---|---|
+| Non-overlapping walk-forward | −0.011R (PF 0.98) | **+0.225R (PF 1.47)** |
+| **Untouched final test** (never in any fold) | +0.035R (PF 1.06) | **+0.482R (PF 2.31)** |
+
+- **Why this one is real** (unlike the confidence bucket that died): the threshold
+  sweep is **monotonic** (0.40→0.70 ⇒ +0.08R→+0.33R — the fingerprint of true signal),
+  it held across BTC/ETH/SOL, and it **survived both** non-overlapping sampling *and*
+  the untouched final test — the exact tests that killed earlier leads.
+- **Honest caveats:** the final-test filtered sample is 97 non-overlapping trades
+  (modest); it's R-expectancy, not a full compounding backtest; crypto/1h only; needs
+  **live forward-testing before real money.** But it is a genuine, verified edge — the
+  first in the project. Report: `reports/outcome_model_summary.md`.
+- **Verdict:** 🟢 ACCEPT (verified). The lesson that took the whole project: don't
+  predict direction better — **select trades better.**
+
 ---
 
 ## 🔧 How we've tried to improve it (the complete list)
@@ -151,13 +173,14 @@ answer to *"how do we improve it?"* — we already tried the serious ideas:
 | **Feature interactions** (ADX×Volume etc.) | ❌ +0.14pp, within noise |
 | Feature combinations | ❌ all degraded or noise |
 | Meta-model (learn which signals win) | ⏳ built, needs ~200 logged calls |
-| **Target-before-stop outcome model** | 🔜 **not built yet — the best remaining idea** |
+| **🟢 Target-before-stop outcome model** | ✅ **BUILT & VERIFIED — turns break-even into +0.22R to +0.48R** |
 
-**The pattern (now definitive):** across **4 specs and 8 feature groups**, accuracy
-will not move past ~61% — every gain is inside the fold-to-fold noise. Feature
-engineering is **exhausted** as a lever. And even where accuracy nudged, it never
-became profit. The one idea left that attacks *profit* directly (not accuracy) is the
-outcome model — see "Options from here" below.
+**The pattern — and the breakthrough:** across **4 specs and 8 feature groups**,
+accuracy would not move past ~61% (all noise). Feature engineering is **exhausted**.
+But the honest conclusion from that — *stop chasing accuracy, chase trade selection* —
+led to the **outcome model**, which **worked**: filtering direction signals by
+"will this hit target before stop?" turns break-even into positive expectancy, and it
+**survived the untouched final test** (PF 2.31). That's the first verified edge here.
 
 ---
 
@@ -302,8 +325,20 @@ work has to clear. Bring any suggestion and we'll run it through the same honest
 pipeline (`python -m app.training.challenger_compare`) rather than trusting a claim.
 
 ### 🧭 The one-sentence status
-> **A finished, honest, well-tested trading *practice* platform — great for learning,
-> break-even for profit. Accuracy is stuck at ~61% (4 specs, 8 feature groups, every
-> gain was noise — feature engineering is exhausted); the one honest experiment left
-> is the target-before-stop outcome model, which attacks profit directly. Real money:
-> not recommended.**
+> **A finished, honest, well-tested platform whose direction model is stuck at ~61% /
+> break-even — but whose new *outcome model* (trade selection, not direction) turns
+> that into a verified +0.22R to +0.48R edge that survived the untouched final test.
+> First real result. Next: wire it into the live decision engine + forward-test it
+> before any real money.**
+
+### 🚀 The breakthrough, and what's next
+The whole project's lesson in one line: **we couldn't predict direction better, but we
+learned to *select trades* better.** The outcome model is the first verified edge.
+Immediate next steps (in order):
+1. **Wire the outcome model into the live decision engine** as a veto layer
+   (Direction → Outcome veto → Confidence → Risk → BUY), behind a config flag.
+2. **Full compounding backtest** of the filtered strategy (position sizing, drawdown,
+   Sharpe) to confirm the R-expectancy becomes real equity growth.
+3. **Forward-test it live** (paper) — the 97-trade final-test sample needs more data
+   before real money.
+4. Validate on **stocks and other timeframes** — so far it's crypto/1h only.
