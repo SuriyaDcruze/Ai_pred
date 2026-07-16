@@ -18,7 +18,7 @@ came from running the code on live market data, out-of-sample, with fees.
 | **Directional accuracy** | **~59%** | When it says up/down, it's right ~59% of the time (50% = coin flip) |
 | **Trading result after fees** | **~0% (break-even)** | 537 trades, avg **−0.005R**, t = −0.09 — not different from zero |
 | **High-confidence signals** | **~90% "accurate", but 0 profit** | Looked amazing; didn't survive real stops + fees |
-| **After trying to improve it** | **still ~59-61%, still break-even** | 3 new feature groups added; gains were inside the noise |
+| **After trying to improve it** | **still ~61%, still break-even** | 4 specs, 8 feature groups tried; every gain was inside the noise |
 | **Best possible with this approach** | **~59-61% direction, no reliable profit** | Not 70%. Not 90%. Those are impossible here. |
 
 ---
@@ -109,6 +109,28 @@ across BTC/ETH/SOL**, full metrics, 8 leakage tests.
   + class-balance gates so noise can't sneak through, and left production unchanged.
   (Full report: `reports/accuracy_improvement_summary.md`.)
 
+### 8. Phase-2 features — multi-timeframe + interactions (the accuracy push, again)
+A fourth spec asked for higher-value features. We built its top two ideas and ran
+them through the same purged 5-fold walk-forward gauntlet.
+
+| Feature set | Walk-forward acc | vs base | Decision |
+|---|---|---|---|
+| Champion (base) | 61.18% ± 3.35pp | — | — |
+| + multi-timeframe (4h+1d) | 61.55% | +0.37pp | ❌ REJECT |
+| + feature interactions | 61.32% | +0.14pp | ❌ REJECT |
+| + market regime (retest) | 61.50% | +0.32pp | ❌ REJECT |
+| + combinations | ≤ 61.69% | ≤ +0.51pp | ❌ REJECT |
+
+- **Multi-timeframe** gave the 1h model real 4h/1d context (leakage-safe — only closed
+  higher-TF bars). **Interactions** handed the *linear* model products like ADX×Volume
+  it can't learn itself. Both reasonable; both landed inside the ±3.35pp noise.
+- **Verdict:** ❌ No gain clears the noise floor (1.68pp). Full report:
+  `reports/final_accuracy_summary.md`.
+
+> **After three rounds and eight feature groups: feature engineering is exhausted as
+> an accuracy lever.** The measured ceiling for this approach is ~61%. More features
+> just fit more noise. This is a real finding, arrived at honestly.
+
 ---
 
 ## 🔧 How we've tried to improve it (the complete list)
@@ -122,16 +144,20 @@ answer to *"how do we improve it?"* — we already tried the serious ideas:
 | Cost-aware labels | ✅ cleaner target, kept |
 | Probability calibration | ✅ honest confidence (ECE 0.14 → 0.05) |
 | High-confidence selectivity | ❌ looked 90%, no real profit |
-| Market-regime features | ❌ within noise |
+| Market-regime features | ❌ within noise (tested twice) |
 | Price-action features | ❌ hurt accuracy |
 | Session/time features | ❌ noise + class imbalance |
-| Feature combinations | ❌ all degraded |
+| **Multi-timeframe fusion** (4h/1d context) | ❌ +0.37pp, within noise |
+| **Feature interactions** (ADX×Volume etc.) | ❌ +0.14pp, within noise |
+| Feature combinations | ❌ all degraded or noise |
 | Meta-model (learn which signals win) | ⏳ built, needs ~200 logged calls |
 | **Target-before-stop outcome model** | 🔜 **not built yet — the best remaining idea** |
 
-**The pattern:** accuracy is hard to move past ~59-61%, and even when it moves a
-little, it doesn't become profit. The one idea left that attacks *profit* directly
-(not accuracy) is the outcome model — see "Options from here" below.
+**The pattern (now definitive):** across **4 specs and 8 feature groups**, accuracy
+will not move past ~61% — every gain is inside the fold-to-fold noise. Feature
+engineering is **exhausted** as a lever. And even where accuracy nudged, it never
+became profit. The one idea left that attacks *profit* directly (not accuracy) is the
+outcome model — see "Options from here" below.
 
 ---
 
@@ -239,10 +265,11 @@ that. Nothing at this state of the art can.
   `python -m app.training.meta --status`.
 
 ### 🔬 Tried, and honestly hit a wall
-- **Accuracy.** Better model, cost-aware labels, calibration, and three new feature
-  groups (regime, price-action, session) — accuracy sits at **~59-61% and won't
-  budge robustly.** The feature gains were inside the noise. (Latest round, fully
-  measured in `reports/`.)
+- **Accuracy.** Better model, cost-aware labels, calibration, and now **8 feature
+  groups across 4 specs** (regime, price-action, session, multi-timeframe,
+  interactions, combinations) — accuracy sits at **~61% and won't budge robustly.**
+  Every feature gain was inside the fold-to-fold noise. Feature engineering is
+  **exhausted** as a lever. (Fully measured in `reports/`.)
 - **Profitability.** Every angle lands at **break-even after fees.** This is the
   measured ceiling of the approach, not a to-do item.
 
@@ -276,6 +303,7 @@ pipeline (`python -m app.training.challenger_compare`) rather than trusting a cl
 
 ### 🧭 The one-sentence status
 > **A finished, honest, well-tested trading *practice* platform — great for learning,
-> break-even for profit. Accuracy is stuck at ~59-61% (every feature idea so far was
-> noise); the one honest experiment left is the target-before-stop outcome model,
-> which attacks profit directly. Real money: not recommended.**
+> break-even for profit. Accuracy is stuck at ~61% (4 specs, 8 feature groups, every
+> gain was noise — feature engineering is exhausted); the one honest experiment left
+> is the target-before-stop outcome model, which attacks profit directly. Real money:
+> not recommended.**
