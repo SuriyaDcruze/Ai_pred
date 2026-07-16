@@ -68,12 +68,35 @@ Legend: 🟢 built & tested · 🟡 partial / needs hardening · 🔴 not built.
 
 ---
 
-## ✅ Book status: all 28 volumes authored (v1.0)
+## ✅ Book status: all 28 volumes authored (v1.0) · Review complete → v1.1 proposed
 
 The Architecture Book is complete and is the permanent technical foundation. Per the
 mandated process, **no module is implemented until its volume is reviewed and the build is
 approved.** The recommended first implementation is **Volume 18 — Forward Testing** (the
 live-proof engine); everything else waits on it.
+
+### 📋 [Architecture Review v1.0](ARCHITECTURE-REVIEW-v1.md) — findings & proposed volumes
+
+A professional review identified real gaps (governance + AI-ops formalism) and proposes
+these **new volumes**, prioritized. They are *proposed*, authored on approval:
+
+| # | Proposed volume | Priority | Why |
+|---|-----------------|----------|-----|
+| 29 | Architecture Decision Records (ADR) | 🔴 Critical | Ten-year memory of *why* |
+| 30 | Domain Model & Ubiquitous Language | 🟠 High | One precise language (DDD) |
+| 31 | API Contracts (formal schemas) | 🟠 High | Stable contracts for clients/LLM tools |
+| 32 | Model Registry | 🟠 High | Govern multiplying models; rollback/lineage |
+| 33 | Background Jobs & Scheduling | 🟠 High | **Dependency of Forward Testing** |
+| 34 | Audit Logging & Compliance | 🟠 High | SEBI / enterprise defensibility |
+| 35 | Sequence Diagrams & State Machines | 🟡 Medium | Lifecycle/resolution/retrain clarity |
+| 36 | User Journeys | 🟡 Medium | Align UX with the engines |
+| 37 | Caching & Performance | 🟡 Medium | Formalise TTLs + latency budgets |
+| 38 | Notifications | 🟡 Medium | Watchlist + ops alerts |
+| 39 | Disaster Recovery | 🔵 Future | Backup/restore at productisation |
+
+**Deliberately declined (for now):** event bus, plugin framework, microservices, native
+mobile — complexity that doesn't yet earn its keep (see review §5). Restraint is
+architecture too.
 
 ---
 
