@@ -38,20 +38,20 @@ The individual volumes are authored on approval, in the priority agreed below.
 | 02 | [**Product Requirements**](02-product-requirements.md) | User stories, functional + non-functional reqs | ✅ written |
 | 03 | [**Business Goals**](03-business-goals.md) | Who it's for, honesty-as-moat, SEBI posture, monetisation | ✅ written |
 | 04 | [**System Architecture**](04-system-architecture.md) | Modular-monolith now → modular services later; data flow | ✅ written |
-| 05 | **Prediction Engine** | Calibrated logistic direction model (the core IP) | 🟢 built |
-| 06 | **Outcome Engine** | Target-before-stop meta-labeling (the verified edge) | 🟢 built |
-| 07 | **GPT / Conversation Assistant** | LLM as orchestrator over Aegis services; never predicts | 🟡 basic |
-| 08 | **Market Intelligence** | Market state, trend/vol context, explainable report | 🟢 built |
-| 09 | **Sector Intelligence** | NSE sector rotation ranking; context not edge | 🟢 built |
-| 10 | **News Intelligence** | Indian sources, event classification, impact | 🟡 basic sentiment |
-| 11 | **Portfolio Intelligence** | "₹X → allocation" — sizing, diversification, correlation | 🔴 not built |
-| 12 | **Risk Engine** | ATR stops, R-multiples, position sizing, portfolio risk | 🟢 built |
-| 13 | **Historical Memory** | Store every prediction+outcome; foundation for learning | 🟡 SQLite tracker |
-| 14 | **Similarity Engine** | "I've seen this setup before" (explainability) | 🟢 built |
-| 15 | **Learning Engine** | Meta-model + nightly champion/challenger retrain | 🟡 built, needs data |
-| 16 | **User Profile** | Preferences, watchlists, risk appetite, auth identity | 🔴 not built |
-| 17 | **Paper Trading** | Log recommendations, score vs real future price | 🟡 tracker exists |
-| 18 | **Forward Testing** | The live-proof engine — turn backtest edge into a record | 🔴 the key gap |
+| 05 | [**Prediction Engine**](05-prediction-engine.md) | Calibrated logistic direction model (the core IP) | 🟢 built |
+| 06 | [**Outcome Engine**](06-outcome-engine.md) | Target-before-stop meta-labeling (the verified edge) | 🟢 built |
+| 07 | [**GPT / Conversation Assistant**](07-gpt-assistant.md) | LLM as orchestrator over Aegis services; never predicts | 🟡 basic |
+| 08 | [**Market Intelligence**](08-market-intelligence.md) | Market state, trend/vol context, explainable report | 🟢 built |
+| 09 | [**Sector Intelligence**](09-sector-intelligence.md) | NSE sector rotation ranking; context not edge | 🟢 built |
+| 10 | [**News Intelligence**](10-news-intelligence.md) | Indian sources, event classification, impact | 🟡 basic sentiment |
+| 11 | [**Portfolio Intelligence**](11-portfolio-intelligence.md) | "₹X → allocation" — sizing, diversification, correlation | 🔴 not built |
+| 12 | [**Risk Engine**](12-risk-engine.md) | ATR stops, R-multiples, position sizing, portfolio risk | 🟢 built |
+| 13 | [**Historical Memory**](13-historical-memory.md) | Store every prediction+outcome; foundation for learning | 🟡 SQLite tracker |
+| 14 | [**Similarity Engine**](14-similarity-engine.md) | "I've seen this setup before" (explainability) | 🟢 built |
+| 15 | [**Learning Engine**](15-learning-engine.md) | Meta-model + nightly champion/challenger retrain | 🟡 built, needs data |
+| 16 | [**User Profile**](16-user-profile.md) | Preferences, watchlists, risk appetite, auth identity | 🔴 not built |
+| 17 | [**Paper Trading**](17-paper-trading.md) | Log recommendations, score vs real future price | 🟡 tracker exists |
+| 18 | [**Forward Testing**](18-forward-testing.md) ⭐ | The live-proof engine — turn backtest edge into a record | 🔴 the key gap |
 | 19 | **Backend Architecture** | FastAPI app, service layer, async, background tasks | 🟡 monolith |
 | 20 | **API Architecture** | REST/WS contracts, versioning, gateway, rate limits, auth | 🟡 unversioned |
 | 21 | **Database Design** | From SQLite → Postgres; schema for predictions/users/trades | 🟡 minimal |
