@@ -18,7 +18,8 @@ came from running the code on live market data, out-of-sample, with fees.
 | **Directional accuracy** | **~59%** | When it says up/down, it's right ~59% of the time (50% = coin flip) |
 | **Trading result after fees** | **~0% (break-even)** | 537 trades, avg **−0.005R**, t = −0.09 — not different from zero |
 | **High-confidence signals** | **~90% "accurate", but 0 profit** | Looked amazing; didn't survive real stops + fees |
-| **Best possible with this approach** | **52–59% direction, no reliable profit** | Not 70%. Not 90%. Those are impossible here. |
+| **After trying to improve it** | **still ~59-61%, still break-even** | 3 new feature groups added; gains were inside the noise |
+| **Best possible with this approach** | **~59-61% direction, no reliable profit** | Not 70%. Not 90%. Those are impossible here. |
 
 ---
 
@@ -85,6 +86,52 @@ profitable. We checked.
   before timing out or hitting the stop. **Directional accuracy ≠ profit.**
 - **Verdict:** ❌ No tradeable edge. The spec predicted this exact outcome and said:
   *"stay in learning mode."* We did.
+
+### 7. New features — regime, price-action, session (the accuracy push)
+A detailed research spec asked us to lift directional accuracy from ~59% toward
+60-63% by adding three new feature groups. We built them as **isolated challengers**
+(production model never touched) and judged them with **purged 5-fold walk-forward
+across BTC/ETH/SOL**, full metrics, 8 leakage tests.
+
+| Feature set | Walk-forward acc | vs base | Decision |
+|---|---|---|---|
+| Champion (base, 45 feats) | 61.01% ± 2.59pp | — | — |
+| + market regime | 61.37% | +0.37pp | ❌ REJECT |
+| + price action | 60.03% | −0.98pp | ❌ REJECT |
+| + session | 61.47% | +0.47pp | ❌ REJECT |
+| + combinations | all worse | — | ❌ REJECT |
+
+- **Why rejected:** the +0.37/+0.47pp "gains" are **~7× smaller than the fold-to-fold
+  noise (±2.59pp)** — statistically zero. The session gain also came from **class
+  imbalance** (just predicting DOWN more). And combining the "winners" made it
+  *worse* — the fingerprint of noise, not signal.
+- **Verdict:** ❌ No robust improvement. We hardened the accept rule with uncertainty
+  + class-balance gates so noise can't sneak through, and left production unchanged.
+  (Full report: `reports/accuracy_improvement_summary.md`.)
+
+---
+
+## 🔧 How we've tried to improve it (the complete list)
+
+Everything attempted to push accuracy or profit, and where each landed. This is the
+answer to *"how do we improve it?"* — we already tried the serious ideas:
+
+| Attempt | Outcome |
+|---|---|
+| Better model (deep net → logistic) | ✅ 48% → 59% direction |
+| Cost-aware labels | ✅ cleaner target, kept |
+| Probability calibration | ✅ honest confidence (ECE 0.14 → 0.05) |
+| High-confidence selectivity | ❌ looked 90%, no real profit |
+| Market-regime features | ❌ within noise |
+| Price-action features | ❌ hurt accuracy |
+| Session/time features | ❌ noise + class imbalance |
+| Feature combinations | ❌ all degraded |
+| Meta-model (learn which signals win) | ⏳ built, needs ~200 logged calls |
+| **Target-before-stop outcome model** | 🔜 **not built yet — the best remaining idea** |
+
+**The pattern:** accuracy is hard to move past ~59-61%, and even when it moves a
+little, it doesn't become profit. The one idea left that attacks *profit* directly
+(not accuracy) is the outcome model — see "Options from here" below.
 
 ---
 
@@ -178,9 +225,11 @@ that. Nothing at this state of the art can.
 ### ✅ Done and working
 - Calibrated logistic model live in the app (crypto + stocks)
 - 61 candlestick patterns, My Rules, news sentiment, forward-test tracker
-- Honest tooling: baseline race, calibration report, confidence analyzer, backtester
+- Honest tooling: baseline race, calibration report, confidence analyzer, backtester,
+  **purged walk-forward harness + feature-challenger pipeline** (new)
 - Nightly retrain (champion/challenger) and meta-model, both built
-- ~199 automated tests passing; all pushed to `SuriyaDcruze/Ai_pred`
+- **~215 automated tests passing**, incl. 8 leakage / future-invariance tests; all
+  pushed to `SuriyaDcruze/Ai_pred`
 - A red **learning-mode banner** on the dashboard, on by default, telling the truth
 
 ### ⏳ In progress / waiting on time
@@ -190,21 +239,43 @@ that. Nothing at this state of the art can.
   `python -m app.training.meta --status`.
 
 ### 🔬 Tried, and honestly hit a wall
-- Profitability. Every angle (better model, cost-aware labels, calibration,
-  high-confidence selectivity) lands at **break-even**. This is the measured ceiling
-  of the approach, not a to-do item.
+- **Accuracy.** Better model, cost-aware labels, calibration, and three new feature
+  groups (regime, price-action, session) — accuracy sits at **~59-61% and won't
+  budge robustly.** The feature gains were inside the noise. (Latest round, fully
+  measured in `reports/`.)
+- **Profitability.** Every angle lands at **break-even after fees.** This is the
+  measured ceiling of the approach, not a to-do item.
 
 ### 🛣️ Options from here (in honest order of value)
 1. **Use it as a learning tool** — the highest-value path *today*. Paper-trade,
    read patterns, build discipline. This works right now, risk-free.
-2. **Let the meta-model mature** — leave auto-log running a few weeks, then train it.
-   The one remaining idea that could find a *selective* edge (may still fail).
-3. **Market-regime detection** (from the spec) — worth building for rigor; likely
-   confirms the wall rather than breaks it.
-4. **Not recommended:** connecting real-money trading. The model is break-even —
+2. **Build the target-before-stop outcome model** — the **best remaining idea.** It
+   predicts "will the target be hit before the stop?" — attacking *profit* directly
+   instead of accuracy (which we've now shown is stuck). All the tooling for it
+   exists. It may still fail, but it's the honest next experiment.
+3. **Let the meta-model mature** — leave auto-log running a few weeks, then train it.
+   Also attacks trade *selection* rather than raw accuracy.
+4. **More/different data or horizons** — try 6h/24h horizons, more history, more
+   assets. Low odds of a breakthrough, but cheap to test.
+5. **Not recommended:** connecting real-money trading. The model is break-even —
    automating it would just pay fees to break even, and risks real loss on variance.
+
+### 💬 "People are suggesting ways to improve it" — how to judge those suggestions
+Anyone can suggest an idea. The honest test any suggestion must pass here:
+- Does it improve **out-of-sample** accuracy (not training accuracy)?
+- Across **multiple folds** and **multiple assets** (not one lucky run)?
+- On **non-overlapping**, **leakage-free** samples?
+- **Balanced** across UP and DOWN (not just predicting one direction more)?
+- Does the gain **exceed the fold-to-fold noise** (~2.6pp here)?
+- And ultimately — does it survive the **real backtester with fees** (accuracy ≠ profit)?
+
+Every suggestion we've run through this — including the latest feature ideas — has
+failed at least one of these gates. That's not pessimism; it's the bar real quant
+work has to clear. Bring any suggestion and we'll run it through the same honest
+pipeline (`python -m app.training.challenger_compare`) rather than trusting a claim.
 
 ### 🧭 The one-sentence status
 > **A finished, honest, well-tested trading *practice* platform — great for learning,
-> break-even for profit — with auto-log quietly gathering data for the last
-> experiment (the meta-model) that might, or might not, find a small selective edge.**
+> break-even for profit. Accuracy is stuck at ~59-61% (every feature idea so far was
+> noise); the one honest experiment left is the target-before-stop outcome model,
+> which attacks profit directly. Real money: not recommended.**
