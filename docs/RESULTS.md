@@ -4,10 +4,18 @@ This is the plain-language scoreboard for the Aegis project: everything we tried
 and the **real, measured numbers** — not marketing, not hopes. Every figure here
 came from running the code on live market data, out-of-sample, with fees.
 
-> **One-line summary:** We built a genuinely good market-*reading* tool
-> (~59% directional accuracy, honest calibrated confidence). We did **not** build a
-> money-maker — measured across ~540 trades it is **break-even after fees**. That is
-> the truth, and no amount of extra engineering changed it.
+> **One-line summary:** Direction prediction is stuck at ~61% and is **break-even**
+> (no feature idea moved it — measured). But a separate **outcome model** (trade
+> selection) turns break-even into **positive expectancy in backtest**, verified on
+> **both crypto and Indian NSE stocks** and on an untouched final test. That edge is
+> the real result — **but it has zero live track record and is not proven with real
+> money.**
+
+> **⚠️ For anyone reviewing this for real money or as a product:** the positive
+> numbers below are **backtest only**. Winning samples are modest (97 crypto / 41 NSE
+> untouched trades). There are **no live trades**. The honest next step is weeks-to-
+> months of paper forward-testing before trusting it. Selling trading advice in India
+> requires SEBI compliance — this repo is decision-support/education, not advice.
 
 ---
 
@@ -20,6 +28,9 @@ came from running the code on live market data, out-of-sample, with fees.
 | **High-confidence signals** | **~90% "accurate", but 0 profit** | Looked amazing; didn't survive real stops + fees |
 | **After trying to improve it** | **still ~61%, still break-even** | 4 specs, 8 feature groups tried; every gain was inside the noise |
 | **🟢 Outcome model (trade selection)** | **break-even → +0.22R to +0.48R** | Filtering trades by "target before stop?" — verified on untouched final test (PF 2.31). First real edge. |
+| **🇮🇳 Outcome edge on Indian NSE stocks** | **+0.49R WF, +0.84R untouched** | Same edge holds on NSE daily (PF 2.7 / 6.9). Generalises across markets — strong evidence it's real. |
+| Similarity engine (kNN explainability) | no predictive edge | Confirmed: outcome model already captures it. Kept for "similar setups won X%" explanations. |
+| Parameter sensitivity (overfit check) | edge robust | Filtered edge stays positive across horizons 8–24 — not curve-fit to one lucky setting. |
 | **Best possible with this approach** | **~59-61% direction, no reliable profit** | Not 70%. Not 90%. Those are impossible here. |
 
 ---
@@ -331,14 +342,29 @@ pipeline (`python -m app.training.challenger_compare`) rather than trusting a cl
 > First real result. Next: wire it into the live decision engine + forward-test it
 > before any real money.**
 
-### 🚀 The breakthrough, and what's next
+### 🚀 The breakthrough, and where it stands now
 The whole project's lesson in one line: **we couldn't predict direction better, but we
-learned to *select trades* better.** The outcome model is the first verified edge.
-Immediate next steps (in order):
-1. **Wire the outcome model into the live decision engine** as a veto layer
-   (Direction → Outcome veto → Confidence → Risk → BUY), behind a config flag.
-2. **Full compounding backtest** of the filtered strategy (position sizing, drawdown,
-   Sharpe) to confirm the R-expectancy becomes real equity growth.
-3. **Forward-test it live** (paper) — the 97-trade final-test sample needs more data
-   before real money.
-4. Validate on **stocks and other timeframes** — so far it's crypto/1h only.
+learned to *select trades* better.** The outcome model is the first verified edge, and
+it is now **wired into the live dashboard** (a TAKE/VETO layer) and powers the
+**NSE/Groww screener**. Since the breakthrough we also:
+- ✅ Ran a **full compounding backtest** — confirmed filtered ≫ take-all on every
+  asset, but the headline % is a fantasy (idealised fills); trust the per-trade R.
+- ✅ **Parameter-sensitivity check** — the edge holds across horizons 8–24 (not
+  curve-fit).
+- ✅ **Validated on Indian NSE stocks** — the edge generalises (crypto 1h + NSE daily).
+- ✅ Built the **NSE screener** ("which stock to buy on Groww, where to sell").
+
+**The one thing still missing — and it's the big one: a live track record.** Every
+positive number is backtest. Immediate next step: **weeks-to-months of paper
+forward-testing** to see if the edge survives real slippage, gaps, and live data.
+Only after that: tiny real money, then (honestly marketed) a product.
+
+### ❓ Open questions for a mentor / reviewer
+1. Is a **41-trade** (NSE) / **97-trade** (crypto) untouched-test edge enough to
+   justify live paper-testing, or should we gather more first?
+2. The outcome model is meta-labeling (López de Prado). Is our leakage control on the
+   out-of-fold direction probabilities rigorous enough?
+3. For an Indian product: what's the compliant path — SEBI RA registration, or keep it
+   strictly as education/decision-support with no "advice"?
+4. Cost modelling: we use flat R-based costs. How much would realistic NSE
+   slippage/impact erode the +0.49R edge?

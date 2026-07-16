@@ -10,29 +10,53 @@ pinned: false
 
 # Aegis — Real-Time Trading AI
 
-A beginner-friendly AI trading **practice** platform. It streams live crypto and
-stock data, reads the market with a calibrated machine-learning model, explains
-every call in plain English, enforces your personal risk rules, and lets you
-**forward-test the AI against yourself** on live data — with **no real money and no
-orders ever placed.**
+A beginner-friendly AI trading **practice** platform for **crypto and Indian (NSE)
+stocks**. It reads the market with a two-model pipeline — a direction model *and* a
+trade-selection ("outcome") model — explains every call in plain English, enforces
+your personal risk rules, includes a **Groww/NSE screener** ("which stock to buy,
+where to sell"), and lets you **forward-test the AI** on live data — with **no real
+money and no orders ever placed.**
 
 > **Decision-support and learning software, not financial advice, and not a
-> money-maker.** Tested honestly across 537 trades, the model is **break-even** — see
-> [Honest accuracy](#-honest-accuracy-read-this-first) below. Use it to learn, to
-> practise, and to stay disciplined. Do not trade real money on its signals.
+> money-maker.** The direction model is **break-even** on its own. A separate
+> **outcome model** turns that into a positive edge *in backtest* — verified on both
+> crypto and Indian stocks — but it has **zero live track record.** Do not trade real
+> money on it until it is proven live. See [Honest status](#-honest-status-read-this-first).
 
 ---
 
-## 🎯 Honest accuracy (read this first)
+## 📌 For a reviewer / mentor — the 60-second summary
 
-Most trading products hide this number. We lead with it.
+- **What it is:** an honest AI trading *decision-support & practice* platform. Two
+  models: a **direction** model (~60% accurate) and an **outcome / trade-selection**
+  model (meta-labeling — "will this trade hit target before stop?").
+- **The one real finding:** direction prediction is stuck at ~61% and is break-even.
+  But **filtering trades by the outcome model turns break-even into positive
+  expectancy** — verified with purged walk-forward + an untouched final test, on
+  **crypto (1h)** *and* **Indian NSE stocks (daily)**. The edge generalises across
+  markets and timeframes, which is strong evidence it is real, not curve-fit.
+- **Backtest numbers (untouched test, filtered):** crypto ~+0.48R (PF 2.3);
+  NSE ~+0.84R (PF 6.9, small sample). **Not yet proven live.**
+- **Open question for a mentor:** the winning samples are modest (97 crypto / 41 NSE
+  untouched trades) and there is **no live track record**. Is the edge real, or
+  will it fade live? The honest next step is weeks-to-months of paper forward-testing.
+- **Regulatory note (India):** this is decision-support/education, not registered
+  investment advice. Selling signals/advice in India needs SEBI compliance.
+
+---
+
+## 🎯 Honest status (read this first)
+
+Most trading products hide these numbers. We lead with them.
 
 | Question | Honest answer |
 |----------|---------------|
-| **How often does it guess direction right?** | **~59–61%** on out-of-sample data (50% = a coin flip). Decent. |
-| **Does it make money after fees?** | **No — break-even.** 537 trades, average +0.00 per trade, not statistically different from zero. |
-| **Did trying to improve it help?** | **No.** 4 improvement specs, 8 feature groups tested with purged walk-forward — every gain was inside the noise. ~61% is the measured ceiling. |
-| **Can it reach 90% / guaranteed profit?** | **No. That is impossible.** Anyone claiming it is lying. The realistic ceiling is ~59–61% direction, which is *not* the same as profit. |
+| **How often does it guess direction right?** | **~59–61%** out-of-sample (50% = a coin flip). Wrong ~40% of the time, by design. |
+| **Does raw direction make money after fees?** | **No — break-even.** 537 trades, ~0.00 avg, not different from zero. |
+| **Did better features help direction?** | **No.** 4 specs, 8 feature groups, purged walk-forward — every gain inside the noise. ~61% is the ceiling. |
+| **Does the outcome model (trade selection) help?** | **Yes, in backtest.** Filtering → positive expectancy on crypto AND NSE, survived the untouched final test. |
+| **Is it proven with real money?** | **No — 0 live trades.** Backtest-verified ≠ live-proven. Needs weeks-to-months of forward-testing. |
+| **Can it reach 90% / guaranteed profit?** | **No. Impossible.** Anyone claiming it is lying. |
 
 **Why ~60% right ≠ profitable:** being right about *direction* isn't the same as
 being right about *timing*. The model can correctly say "up over the next 12
@@ -42,8 +66,30 @@ does not have a reliable money-making edge. That is the truth, measured, in your
 repo (`python -m app.training.baselines`).
 
 **What it's genuinely good for:** learning how trading works, reading charts (61
-candlestick patterns), practising risk discipline (My Rules), and forward-testing
-yourself vs the AI — all risk-free.
+candlestick patterns), practising risk discipline (My Rules), screening NSE stocks
+for setups, and forward-testing the AI — all risk-free.
+
+---
+
+## 🇮🇳 Indian NSE stocks (Groww focus)
+
+The platform has a first-class focus on **Indian large-cap stocks** you can trade on
+Groww (Reliance, TCS, Infosys, HDFC Bank, ITC, SBI, Bajaj Finance, …).
+
+- **The screener** (`GET /screener/nse`, dashboard "🇮🇳 Today's NSE setups") scans 15
+  liquid NSE stocks on the **daily** timeframe (what swing/positional traders use),
+  runs both models on each, and returns only the **TAKE** setups — ranked, with exact
+  **entry / stop / target** to place on Groww. When nothing clears the bar (most
+  days), it says so and shows the closest candidates. **An honest screener that tells
+  you to sit out.**
+- **Why this is honest to ship:** the outcome-model edge was **validated on NSE data
+  first** (daily, 8 large-caps): filtered **+0.49R** (PF 2.69) walk-forward, **+0.84R**
+  (PF 6.9) on the untouched final test, vs ~+0.05R take-all. Each market gets its own
+  model (`artifacts/outcome_model_nse.pkl`); the crypto model does not serve stocks.
+- **Honest limits:** Yahoo data is ~15 min delayed and market-hours only (fine for
+  daily decisions, not intraday timing). The NSE winning sample is **41 untouched
+  trades** — promising, not proven. **Paper-trade on Groww first**, risk ≤1%, always
+  use the stop. This is **not registered investment advice** (SEBI).
 
 ---
 
@@ -91,6 +137,9 @@ story is in [`docs/HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md).
 | Beginner-friendly chat assistant (+ optional Claude LLM) | ✅ | `app/chat/` |
 | **Forward-testing tracker** (You vs AI, live win rate) | ✅ | `app/tracking/tracker.py` |
 | Live Binance stream (geo-block fallback built in) | ✅ | `app/stream/binance.py` |
+| **Outcome model** — trade selection ("target before stop?"), the real edge | ✅ | `app/ai/outcome_model.py` |
+| **🇮🇳 NSE / Groww screener** — which Indian stock to buy, where to sell | ✅ | `app/screener.py` |
+| **Similarity engine** — "similar past setups won X%" (explainability) | ✅ | `app/ai/similarity_engine.py` |
 | **Stocks** — Apple, Tesla, ITC, Reliance… via Yahoo (no API key) | ✅ | `app/stream/yahoo.py` |
 | **News + sentiment** (free RSS, finance lexicon) | ✅ | `app/features/sentiment.py` |
 | **My Rules** — your checklist, enforced before every trade | ✅ | `app/decision/rules.py` |
