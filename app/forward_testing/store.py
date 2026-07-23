@@ -23,6 +23,7 @@ persists their outputs and imports nothing from them.
 from __future__ import annotations
 
 import sqlite3
+import threading
 from typing import Any, Iterable
 
 from app.database.connection import DEFAULT_DB_PATH, get_connection
@@ -58,6 +59,10 @@ class PredictionStore:
                 ``path`` is ignored.
         """
         self._conn = conn or get_connection(path)
+        # Serialises access so the background monitor's worker thread and the request
+        # thread never touch the shared connection concurrently. Reentrant because some
+        # methods (update_*) call get() while already holding the lock.
+        self._lock = threading.RLock()
         run_migrations(self._conn)
 
     # ------------------------------------------------------------------ create
@@ -76,7 +81,7 @@ class PredictionStore:
         columns = ", ".join(row)
         placeholders = ", ".join(f":{name}" for name in row)
         try:
-            with self._conn:  # transaction: commits on success, rolls back on error
+            with self._lock, self._conn:  # lock + transaction (commit / rollback)
                 self._conn.execute(
                     f"INSERT INTO predictions ({columns}) VALUES ({placeholders})", row
                 )
@@ -91,9 +96,10 @@ class PredictionStore:
     # -------------------------------------------------------------------- read
     def get(self, prediction_id: str) -> PredictionRecord | None:
         """Fetch one prediction by id, or ``None`` if it does not exist."""
-        row = self._conn.execute(
-            "SELECT * FROM predictions WHERE prediction_id = ?", (prediction_id,)
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM predictions WHERE prediction_id = ?", (prediction_id,)
+            ).fetchone()
         return PredictionRecord.from_row(row) if row else None
 
     def list_active(self, symbol: str | None = None) -> list[PredictionRecord]:
@@ -118,7 +124,8 @@ class PredictionStore:
         sql = "SELECT * FROM predictions ORDER BY created_at DESC"
         if limit:
             sql += f" LIMIT {int(limit)}"
-        return [PredictionRecord.from_row(r) for r in self._conn.execute(sql)]
+        with self._lock:
+            return [PredictionRecord.from_row(r) for r in self._conn.execute(sql)]
 
     def _query_by_status(
         self,
@@ -135,7 +142,8 @@ class PredictionStore:
             sql += " AND symbol = ?"
             params.append(symbol)
         sql += " ORDER BY created_at DESC" if newest_first else " ORDER BY created_at ASC"
-        return [PredictionRecord.from_row(r) for r in self._conn.execute(sql, params)]
+        with self._lock:
+            return [PredictionRecord.from_row(r) for r in self._conn.execute(sql, params)]
 
     # ------------------------------------------------------------------ update
     def update_status(self, prediction_id: str, status: PredictionStatus) -> bool:
@@ -147,16 +155,17 @@ class PredictionStore:
             ``True`` when the status changed, ``False`` when the record is missing,
             already terminal, or already in that state.
         """
-        current = self.get(prediction_id)
-        if current is None:
-            logger.debug("update_status: unknown prediction %s", prediction_id)
-            return False
-        if current.is_terminal():
-            logger.debug("update_status: %s already terminal (%s)", prediction_id, current.status)
-            return False
-        if current.status is status:
-            return False
-        return self._write_lifecycle(prediction_id, {"status": status.value})
+        with self._lock:  # atomic read-modify-write (RLock → nested get/write is fine)
+            current = self.get(prediction_id)
+            if current is None:
+                logger.debug("update_status: unknown prediction %s", prediction_id)
+                return False
+            if current.is_terminal():
+                logger.debug("update_status: %s already terminal (%s)", prediction_id, current.status)
+                return False
+            if current.status is status:
+                return False
+            return self._write_lifecycle(prediction_id, {"status": status.value})
 
     def update_resolution(
         self,
@@ -189,27 +198,27 @@ class PredictionStore:
         if not status.is_terminal():
             raise ValueError(f"{status} is not a terminal state")
 
-        current = self.get(prediction_id)
-        if current is None:
-            logger.debug("update_resolution: unknown prediction %s", prediction_id)
-            return False
-        if current.is_terminal():
-            logger.debug("update_resolution: %s already resolved", prediction_id)
-            return False
-
         from app.forward_testing.models import _utc_now_iso
 
-        return self._write_lifecycle(
-            prediction_id,
-            {
-                "status": status.value,
-                "resolved_at": resolved_at or _utc_now_iso(),
-                "resolved_price": resolved_price,
-                "resolution_reason": resolution_reason,
-                "realised_r": realised_r,
-                "holding_bars": holding_bars,
-            },
-        )
+        with self._lock:  # atomic read-modify-write
+            current = self.get(prediction_id)
+            if current is None:
+                logger.debug("update_resolution: unknown prediction %s", prediction_id)
+                return False
+            if current.is_terminal():
+                logger.debug("update_resolution: %s already resolved", prediction_id)
+                return False
+            return self._write_lifecycle(
+                prediction_id,
+                {
+                    "status": status.value,
+                    "resolved_at": resolved_at or _utc_now_iso(),
+                    "resolved_price": resolved_price,
+                    "resolution_reason": resolution_reason,
+                    "realised_r": realised_r,
+                    "holding_bars": holding_bars,
+                },
+            )
 
     def _write_lifecycle(self, prediction_id: str, changes: dict[str, Any]) -> bool:
         """Apply a lifecycle-only update inside a transaction.
@@ -225,7 +234,7 @@ class PredictionStore:
 
         changes = {**changes, "updated_at": _utc_now_iso()}
         assignments = ", ".join(f"{col} = :{col}" for col in changes)
-        with self._conn:
+        with self._lock, self._conn:
             cursor = self._conn.execute(
                 f"UPDATE predictions SET {assignments} WHERE prediction_id = :prediction_id",
                 {**changes, "prediction_id": prediction_id},
@@ -235,12 +244,13 @@ class PredictionStore:
     # -------------------------------------------------------------- statistics
     def count(self, status: PredictionStatus | None = None) -> int:
         """Number of predictions, optionally filtered by status."""
-        if status is None:
-            row = self._conn.execute("SELECT COUNT(*) AS n FROM predictions").fetchone()
-        else:
-            row = self._conn.execute(
-                "SELECT COUNT(*) AS n FROM predictions WHERE status = ?", (status.value,)
-            ).fetchone()
+        with self._lock:
+            if status is None:
+                row = self._conn.execute("SELECT COUNT(*) AS n FROM predictions").fetchone()
+            else:
+                row = self._conn.execute(
+                    "SELECT COUNT(*) AS n FROM predictions WHERE status = ?", (status.value,)
+                ).fetchone()
         return int(row["n"])
 
     def statistics(self, symbol: str | None = None) -> dict[str, Any]:

@@ -9,13 +9,15 @@
 |-----------|-------|--------|-------|--------|
 | **M1** | DB foundation: schema, `PredictionRecord`/`PredictionStatus`, versioned migrations | ✅ **done — approved** | 33 | `f959619` |
 | **M2** | `PredictionStore`: CRUD, duplicate protection, status/resolution updates, active/completed queries, statistics, restart-safe | ✅ **done — awaiting review** | 36 | `b1fa57c` |
-| **M3** | Forward Testing Engine: resolver, state machine, background monitor | ⏳ pending approval | — | — |
+| **M3** | Forward Testing Engine: resolver, state machine, background monitor, restart-safe | ✅ **done — awaiting review** | 23 | (local) |
 | **M4** | REST API: `/forward/*` endpoints | ⏳ pending | — | — |
 | **M5** | Dashboard: active/completed, win rate, PF, avg R, max DD, holding, open risk | ⏳ pending | — | — |
 | **M6** | Documentation: architecture, API, testing, results | ⏳ pending | — | — |
 
-- **Full suite after M2:** 230 passed, 0 failed. Prediction/Outcome engines untouched &
-  verified unaffected. M1+M2 code imports **nothing** from the engines.
+- **Full suite after M3:** 325 passed, 0 failed. Prediction/Outcome engines untouched &
+  verified unaffected. Forward-testing code imports **nothing** from the engines.
+  M3 note: added `check_same_thread=False` + a store lock so the background monitor's
+  worker thread can share the connection safely (a real concurrency bug the tests caught).
 - **⚠️ Push blocked:** commits `f959619` (M1) + `b1fa57c` (M2) are local only — the remote
   returns `403 Permission denied to Suriyar-Dcruze` for `SuriyaDcruze/Ai_pred`. Grant that
   account write access (or re-auth git) and `git push origin main` sends both.

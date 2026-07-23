@@ -46,7 +46,10 @@ def get_connection(path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
     if parent:
         os.makedirs(parent, exist_ok=True)
 
-    conn = sqlite3.connect(path, timeout=_BUSY_TIMEOUT_MS / 1000)
+    # check_same_thread=False lets the background monitor (which runs a pass in a worker
+    # thread) share this connection with the request thread. Concurrent access is
+    # serialised by a lock in PredictionStore, and WAL keeps readers off the writer's back.
+    conn = sqlite3.connect(path, timeout=_BUSY_TIMEOUT_MS / 1000, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     # WAL: concurrent readers + one writer (the monitor) without global locking.
     conn.execute("PRAGMA journal_mode=WAL")

@@ -8,13 +8,24 @@ have never seen.
 This package is **strictly independent** of those engines — it consumes their outputs and
 never imports, modifies, or refactors them.
 
-Milestones 1–2 provide the domain models and the persistence layer; the resolver,
-monitor, API and dashboard arrive in later milestones.
+Milestones 1–3 provide the domain models, the persistence layer, and the engine
+(resolver + monitor); the REST API and dashboard arrive in later milestones.
 """
 
 from __future__ import annotations
 
+from app.forward_testing.engine import ForwardTestingEngine
 from app.forward_testing.models import PredictionRecord, PredictionStatus
+from app.forward_testing.monitor import ForwardTestingMonitor
+from app.forward_testing.resolver import ResolutionOutcome, resolve_prediction
 from app.forward_testing.store import PredictionStore
 
-__all__ = ["PredictionRecord", "PredictionStatus", "PredictionStore"]
+__all__ = [
+    "PredictionRecord",
+    "PredictionStatus",
+    "PredictionStore",
+    "ForwardTestingEngine",
+    "ForwardTestingMonitor",
+    "ResolutionOutcome",
+    "resolve_prediction",
+]
