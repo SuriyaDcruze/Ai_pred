@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aegis — Forward Testing (Live Track Record)</title>
+<!--
+  Forward Testing Dashboard (Sprint 1 · Milestone 5).
+  PRESENTATION LAYER ONLY. It consumes the /forward/* REST API and renders it.
+  No business logic, no direct database access, no model calls. Every aggregate
+  shown is computed server-side; this page only formats and displays.
+-->
+<style>
+  :root{
+    --ice:#7dd3fc; --ice-deep:#38bdf8; --mint:#34d399; --coral:#fb7185; --amber:#fbbf24;
+    --ink:#e6f1f8; --muted:#8aa4b8; --line:rgba(148,190,220,.14);
+    --glass:rgba(18,38,58,.55); --glass-2:rgba(14,30,48,.72);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); background:#06111d; min-height:100vh; -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:""; position:fixed; inset:-20% -20% auto -20%; height:120vh; z-index:-1;
+    background:
+      radial-gradient(40% 40% at 20% 15%, rgba(56,189,248,.22), transparent 70%),
+      radial-gradient(45% 45% at 85% 10%, rgba(45,212,191,.18), transparent 70%),
+      radial-gradient(50% 50% at 60% 90%, rgba(99,102,241,.16), transparent 70%),
+      linear-gradient(160deg,#071626,#06111d 60%,#050d16);
+    filter:saturate(1.05);
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:14px 14px 48px}
+  .glass{
+    background:var(--glass); backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+    border:1px solid var(--line); border-radius:20px; box-shadow:0 8px 30px rgba(2,10,20,.35);
+  }
+  header{display:flex; align-items:center; gap:10px; padding:12px 4px 10px; flex-wrap:wrap}
+  .logo{font-weight:800; font-size:19px; letter-spacing:.3px; display:flex; align-items:center; gap:8px}
+  .logo b{background:linear-gradient(90deg,var(--ice),var(--mint)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .pill{font-size:11px; color:var(--muted); border:1px solid var(--line); padding:3px 9px; border-radius:20px}
+  a.link{color:var(--ice); text-decoration:none; font-size:13px; font-weight:600}
+  a.link:hover{text-decoration:underline}
+  .controls{display:flex; gap:8px; margin-left:auto; flex-wrap:wrap; align-items:center}
+  select,button{
+    background:var(--glass-2); color:var(--ink); border:1px solid var(--line);
+    border-radius:12px; padding:8px 12px; font-size:13px; font-weight:600; outline:none;
+    -webkit-appearance:none; appearance:none; cursor:pointer;
+  }
+  button:hover{border-color:var(--ice)}
+
+  .lede{margin:2px 4px 14px; color:var(--muted); font-size:13.5px; line-height:1.55}
+  .lede b{color:var(--ink)}
+
+  .card{padding:16px; margin-bottom:14px}
+  .card h3{margin:0 0 12px; font-size:13px; letter-spacing:.5px; text-transform:uppercase; color:var(--muted); font-weight:700; display:flex; align-items:center; gap:8px}
+  .card h3 .n{color:var(--ice-deep)}
+
+  /* metric tiles */
+  .tiles{display:grid; grid-template-columns:repeat(2,1fr); gap:10px}
+  @media(min-width:640px){ .tiles{grid-template-columns:repeat(3,1fr)} }
+  @media(min-width:920px){ .tiles{grid-template-columns:repeat(5,1fr)} }
+  .tile{background:var(--glass-2); border:1px solid var(--line); border-radius:14px; padding:12px 13px}
+  .tile .k{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; font-weight:700}
+  .tile .v{font-size:22px; font-weight:800; margin-top:5px; letter-spacing:.3px}
+  .tile .s{font-size:11px; color:var(--muted); margin-top:2px}
+  .pos{color:var(--mint)} .neg{color:var(--coral)} .neu{color:var(--ink)}
+
+  /* live-vs-backtest */
+  .lvb{display:grid; grid-template-columns:1fr; gap:12px}
+  @media(min-width:720px){ .lvb{grid-template-columns:1fr 1fr 1fr} }
+  .lvb .big{font-size:26px; font-weight:800}
+  .statusbadge{display:inline-block; font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; border:1px solid var(--line)}
+  .st-no_data{color:var(--muted)}
+  .st-building_sample{color:var(--amber); border-color:rgba(251,191,36,.4); background:rgba(251,191,36,.08)}
+  .st-inconclusive{color:var(--amber); border-color:rgba(251,191,36,.4); background:rgba(251,191,36,.08)}
+  .st-statistically_significant{color:var(--mint); border-color:rgba(52,211,153,.4); background:rgba(52,211,153,.08)}
+  .honest{margin-top:12px; font-size:12.5px; color:var(--muted); line-height:1.55; border-left:2px solid var(--line); padding-left:12px}
+
+  /* tables */
+  .tablewrap{overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{width:100%; border-collapse:collapse; font-size:13px; min-width:560px}
+  th,td{text-align:right; padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.4px; font-weight:700}
+  tbody tr:hover{background:rgba(125,211,252,.05)}
+  .tag{display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:8px; border:1px solid var(--line)}
+  .tag.buy{color:var(--mint); border-color:rgba(52,211,153,.35)}
+  .tag.sell{color:var(--coral); border-color:rgba(251,113,133,.35)}
+  .tag.win{color:var(--mint)} .tag.loss{color:var(--coral)} .tag.open{color:var(--ice)} .tag.expired{color:var(--amber)}
+  .mono{font-variant-numeric:tabular-nums}
+
+  /* state blocks */
+  .state{padding:20px 8px; text-align:center; color:var(--muted); font-size:13.5px}
+  .state.err{color:#ffd7dc}
+  .skeleton{height:14px; border-radius:7px; background:linear-gradient(90deg,rgba(125,211,252,.08),rgba(125,211,252,.16),rgba(125,211,252,.08)); background-size:200% 100%; animation:sh 1.3s infinite}
+  @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .foot{color:var(--muted); font-size:11.5px; text-align:center; margin-top:18px; line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">📡 <b>Aegis</b> · Forward Testing</div>
+    <span class="pill" id="freshPill">—</span>
+    <div class="controls">
+      <a class="link" href="/dashboard/">← Live chart</a>
+      <button id="refreshBtn" onclick="loadAll()">↻ Refresh</button>
+    </div>
+  </header>
+
+  <div class="lede">
+    The honest question this page answers: <b>is Aegis actually performing in live
+    markets?</b> Everything here is a <b>forward-tested live record</b> — real
+    recommendations scored against real future price. It is not a backtest and not live
+    trading. Numbers are shown with their sample size; a win rate from a handful of trades
+    is <b>not</b> proof.
+  </div>
+
+  <!-- 1. OVERVIEW -->
+  <section class="glass card">
+    <h3><span class="n">1</span> · Overview</h3>
+    <div id="overview"><div class="tiles">
+      <div class="tile"><div class="k">Loading…</div><div class="v skeleton">&nbsp;</div></div>
+    </div></div>
+  </section>
+
+  <!-- 2. LIVE vs BACKTEST -->
+  <section class="glass card">
+    <h3><span class="n">2</span> · Live vs Backtest</h3>
+    <div id="lvb"><div class="state"><div class="skeleton" style="max-width:280px;margin:0 auto">&nbsp;</div></div></div>
+  </section>
+
+  <!-- 3. PERFORMANCE BREAKDOWN -->
+  <section class="glass card">
+    <h3><span class="n">3</span> · Performance Breakdown
+      <select id="dim" style="margin-left:auto" onchange="loadBreakdown()">
+        <option value="market">By market</option>
+        <option value="sector" selected>By sector</option>
+        <option value="timeframe">By timeframe</option>
+        <option value="confidence">By confidence bucket</option>
+        <option value="regime">By market regime</option>
+      </select>
+    </h3>
+    <div id="breakdown"><div class="state">Loading…</div></div>
+  </section>
+
+  <!-- 4. ACTIVE PREDICTIONS -->
+  <section class="glass card">
+    <h3><span class="n">4</span> · Active Predictions <span id="activeCount" class="pill" style="margin-left:auto">—</span></h3>
+    <div id="active"><div class="state">Loading…</div></div>
+  </section>
+
+  <!-- 5. COMPLETED PREDICTIONS -->
+  <section class="glass card">
+    <h3><span class="n">5</span> · Completed Predictions <span id="completedCount" class="pill" style="margin-left:auto">—</span></h3>
+    <div id="completed"><div class="state">Loading…</div></div>
+  </section>
+
+  <!-- 6. PREDICTION TIMELINE -->
+  <section class="glass card">
+    <h3><span class="n">6</span> · Prediction Timeline</h3>
+    <div id="timeline"><div class="state">Loading…</div></div>
+  </section>
+
+  <div class="foot">
+    Presentation layer over the <span class="mono">/forward/*</span> REST API · no business
+    logic, no direct DB access · Aegis Forward Testing (Sprint 1)
+  </div>
+</div>
+
+<script>
+// ------------------------------------------------------------------ helpers
+const $ = (id) => document.getElementById(id);
+
+async function getJSON(url){
+  try{
+    const r = await fetch(url, {headers:{'Accept':'application/json'}});
+    if(!r.ok){ return {ok:false, status:r.status, error:`HTTP ${r.status}`}; }
+    return {ok:true, data: await r.json()};
+  }catch(e){ return {ok:false, error:(e && e.message) || 'network error'}; }
+}
+function errState(el, res){
+  el.innerHTML = `<div class="state err">⚠ Couldn't load this section — ${res.error||'error'}.
+    <div style="margin-top:8px"><button onclick="loadAll()">Retry</button></div></div>`;
+}
+function emptyState(el, msg){ el.innerHTML = `<div class="state">${msg}</div>`; }
+
+const nOrDash = (x, d=2) => (x===null||x===undefined||Number.isNaN(x)) ? '—' : Number(x).toFixed(d);
+const pct = (x) => (x===null||x===undefined) ? '—' : (Number(x)*100).toFixed(1)+'%';
+function pf(x){ if(x===null||x===undefined) return '—'; if(x===Infinity||x>1e6) return '∞'; return Number(x).toFixed(2); }
+const rMul = (x) => (x===null||x===undefined) ? '—' : (Number(x)>=0?'+':'')+Number(x).toFixed(2)+'R';
+const cls  = (x) => x===null||x===undefined ? 'neu' : (Number(x)>0?'pos':(Number(x)<0?'neg':'neu'));
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function daysOpen(iso){ if(!iso) return '—'; const d=(Date.now()-Date.parse(iso))/86400000; return isFinite(d)? d.toFixed(1) : '—'; }
+function whenLabel(iso){ if(!iso) return '—'; const t=Date.parse(iso); if(!isFinite(t)) return esc(iso);
+  return new Date(t).toISOString().replace('T',' ').slice(0,16)+' UTC'; }
+function sideTag(dir){ const d=String(dir||'').toUpperCase(); const c=d==='BUY'?'buy':(d==='SELL'?'sell':''); return `<span class="tag ${c}">${esc(d||'—')}</span>`; }
+function resultTag(status){
+  const s=String(status||'').toUpperCase(); let c='open', txt=s||'—';
+  if(s==='TARGET_HIT'){c='win';txt='WIN';} else if(s==='STOP_HIT'){c='loss';txt='LOSS';}
+  else if(s==='EXPIRED'){c='expired';txt='EXPIRED';} else if(s==='CANCELLED'){c='';txt='CANCELLED';}
+  else {c='open';}
+  return `<span class="tag ${c}">${esc(txt)}</span>`;
+}
+function targets(p){ const t=[p.target1,p.target2].filter(v=>v!==null&&v!==undefined); return t.length? t.map(v=>nOrDash(v)).join(' / ') : '—'; }
+function sampleNote(n, min){
+  if(!n) return '<span class="tag open">no live trades yet</span>';
+  if(n<min) return `<span class="tag open">${n} trade${n>1?'s':''} · sample too small (&lt;${min})</span>`;
+  return `<span class="tag win">${n} resolved trades</span>`;
+}
+
+// ------------------------------------------------------------------ 1+2: summary
+async function loadSummary(){
+  const ov=$('overview'), lv=$('lvb');
+  const res = await getJSON('/forward/summary');
+  if(!res.ok){ errState(ov,res); errState(lv,res); return; }
+  const s = res.data, st = s.stats||{}, min = s.min_meaningful_sample||50;
+
+  // ---- Overview tiles ----
+  const tiles = [
+    ['Total predictions', st.total ?? 0, '', 'neu'],
+    ['Active', st.open ?? 0, 'open now', 'neu'],
+    ['Completed', st.resolved ?? 0, 'resolved', 'neu'],
+    ['Win rate', st.resolved ? pct(st.win_rate) : '—', st.resolved? `${st.wins||0}W / ${st.losses||0}L` : 'no data', 'neu'],
+    ['Profit factor', st.resolved ? pf(st.profit_factor) : '—', 'gross win ÷ loss', cls((st.profit_factor||0)-1)],
+    ['Average R', st.resolved ? rMul(st.avg_r) : '—', 'per trade', cls(st.avg_r)],
+    ['Expectancy', st.resolved ? rMul(s.expectancy) : '—', 'expected R/trade', cls(s.expectancy)],
+    ['Avg holding', st.avg_holding_bars!=null ? Number(st.avg_holding_bars).toFixed(1) : '—', 'bars', 'neu'],
+    ['Open risk', rMul(st.open_risk_r ?? 0), 'R at risk now', 'neu'],
+  ];
+  ov.innerHTML = `<div class="tiles">${tiles.map(([k,v,sub,c])=>
+    `<div class="tile"><div class="k">${k}</div><div class="v ${c}">${v}</div><div class="s">${sub}</div></div>`).join('')}
+    </div>${ st.resolved < min ? `<div class="honest">${esc(s.note||'')}</div>` : ''}`;
+
+  // ---- Live vs Backtest ----
+  const c = s.live_vs_backtest||{}, bt = s.backtest||{};
+  const diffTxt = c.difference==null ? '—' : (c.difference>=0?'+':'')+(c.difference*100).toFixed(1)+' pts';
+  const statusLabel = {no_data:'No data', building_sample:'Building sample',
+    inconclusive:'Inconclusive', statistically_significant:'Statistically significant'}[c.status] || c.status || '—';
+  const ci = (c.ci_low!=null&&c.ci_high!=null) ? `95% CI ${pct(c.ci_low)}–${pct(c.ci_high)}` : '';
+  lv.innerHTML = `
+    <div class="lvb">
+      <div class="tile"><div class="k">Live win rate</div>
+        <div class="big ${cls((c.live_win_rate||0)-0.5)}">${c.live_win_rate!=null?pct(c.live_win_rate):'—'}</div>
+        <div class="s">${ci}</div></div>
+      <div class="tile"><div class="k">Backtest win rate</div>
+        <div class="big neu">${bt.configured? pct(bt.win_rate) : '—'}</div>
+        <div class="s">${bt.configured? esc(bt.label) : 'no baseline configured'}</div></div>
+      <div class="tile"><div class="k">Difference</div>
+        <div class="big ${cls(c.difference)}">${diffTxt}</div>
+        <div class="s">live − backtest</div></div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="statusbadge st-${esc(c.status||'no_data')}">${esc(statusLabel)}</span>
+      ${sampleNote(c.sample_size||0, min)}
+    </div>
+    <div class="honest">${esc(s.disclaimer||'')}
+      ${bt.configured? `<br>Baseline: <b>${esc(bt.label)}</b> — ${pct(bt.win_rate)} win rate,
+        ${rMul(bt.avg_r)} avg, PF ${pf(bt.profit_factor)}. Live must earn a comparable number
+        over ${min}+ trades before any "edge holds live" claim.` : ''}
+    </div>`;
+}
+
+// ------------------------------------------------------------------ 3: breakdown
+async function loadBreakdown(){
+  const el=$('breakdown'); const by=$('dim').value;
+  el.innerHTML = '<div class="state">Loading…</div>';
+  const res = await getJSON('/forward/breakdown?by='+encodeURIComponent(by));
+  if(!res.ok){ return errState(el,res); }
+  const d=res.data, groups=d.groups||[], min=d.min_meaningful_sample||50;
+  if(!d.resolved_total){ return emptyState(el, 'No resolved predictions yet — breakdowns appear once trades close.'); }
+  const rows = groups.filter(g=>g.stats.resolved>0).map(g=>{
+    const s=g.stats, thin = s.resolved<min;
+    return `<tr>
+      <td>${esc(g.bucket)} ${thin?'<span class="s" style="color:var(--amber)">·small</span>':''}</td>
+      <td class="mono">${s.resolved}</td>
+      <td class="mono">${pct(s.win_rate)}</td>
+      <td class="mono ${cls(s.avg_r)}">${rMul(s.avg_r)}</td>
+      <td class="mono ${cls((s.profit_factor||0)-1)}">${pf(s.profit_factor)}</td>
+      <td class="mono ${cls(s.total_r)}">${rMul(s.total_r)}</td>
+      <td class="mono ${cls(-s.max_drawdown_r)}">${nOrDash(s.max_drawdown_r)}R</td>
+    </tr>`;}).join('');
+  el.innerHTML = `<div class="tablewrap"><table>
+    <thead><tr><th>Group</th><th>Trades</th><th>Win rate</th><th>Avg R</th><th>PF</th><th>Total R</th><th>Max DD</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    <div class="honest">Groups with fewer than ${min} resolved trades are marked
+      <span style="color:var(--amber)">·small</span> — read them as hints, not conclusions.</div>`;
+}
+
+// ------------------------------------------------------------------ 4: active
+async function loadActive(){
+  const el=$('active');
+  const res = await getJSON('/forward/active');
+  if(!res.ok){ $('activeCount').textContent='—'; return errState(el,res); }
+  const preds=res.data.predictions||[]; $('activeCount').textContent = `${res.data.count||0} open`;
+  if(!preds.length){ return emptyState(el, 'No active predictions. Recorded BUY/SELL calls will appear here while the market decides them.'); }
+  const rows = preds.map(p=>`<tr>
+    <td>${esc(p.symbol)} <span class="s" style="color:var(--muted)">${esc(p.timeframe||'')}</span></td>
+    <td>${sideTag(p.direction||p.recommendation)}</td>
+    <td class="mono">${nOrDash(p.entry)}</td>
+    <td class="mono">${nOrDash(p.stop)}</td>
+    <td class="mono">${targets(p)}</td>
+    <td>${resultTag(p.status)}</td>
+    <td class="mono" title="unrealised — resolves at target/stop/expiry">— <span class="s" style="color:var(--muted)">open</span></td>
+    <td class="mono">${daysOpen(p.created_at)}</td>
+  </tr>`).join('');
+  el.innerHTML = `<div class="tablewrap"><table>
+    <thead><tr><th>Symbol</th><th>Direction</th><th>Entry</th><th>Stop</th><th>Targets</th><th>Status</th><th>Current R</th><th>Days open</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    <div class="honest">"Current R" is unrealised while a trade is open — it is only booked
+      when the market hits the target, the stop, or the time limit.</div>`;
+}
+
+// ------------------------------------------------------------------ 5: completed
+async function loadCompleted(){
+  const el=$('completed');
+  const res = await getJSON('/forward/completed?limit=200');
+  if(!res.ok){ $('completedCount').textContent='—'; return errState(el,res); }
+  const preds=res.data.predictions||[]; $('completedCount').textContent = `${res.data.count||0} resolved`;
+  if(!preds.length){ return emptyState(el, 'No completed predictions yet. Resolved trades (win / loss / expired) will be listed here.'); }
+  const rows = preds.map(p=>`<tr>
+    <td>${esc(p.symbol)} <span class="s" style="color:var(--muted)">${esc(p.timeframe||'')}</span></td>
+    <td>${sideTag(p.direction||p.recommendation)}</td>
+    <td class="mono">${nOrDash(p.entry)}</td>
+    <td class="mono">${nOrDash(p.resolved_price)}</td>
+    <td>${resultTag(p.status)}</td>
+    <td class="mono ${cls(p.realised_r)}">${rMul(p.realised_r)}</td>
+    <td class="mono">${p.holding_bars!=null?p.holding_bars:'—'}</td>
+    <td>${esc(p.resolution_reason||'—')}</td>
+  </tr>`).join('');
+  el.innerHTML = `<div class="tablewrap"><table>
+    <thead><tr><th>Symbol</th><th>Direction</th><th>Entry</th><th>Exit</th><th>Result</th><th>Realised R</th><th>Holding</th><th>Reason</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+// ------------------------------------------------------------------ 6: timeline
+async function loadTimeline(){
+  const el=$('timeline');
+  const [a,cpl] = await Promise.all([getJSON('/forward/active'), getJSON('/forward/completed?limit=500')]);
+  if(!a.ok && !cpl.ok){ return errState(el, a.ok?cpl:a); }
+  const all = [...((a.data&&a.data.predictions)||[]), ...((cpl.data&&cpl.data.predictions)||[])];
+  if(!all.length){ return emptyState(el, 'The timeline fills in as predictions are recorded and resolved.'); }
+  all.sort((x,y)=> Date.parse(y.created_at||0) - Date.parse(x.created_at||0));
+  const rows = all.map(p=>`<tr>
+    <td class="mono">${whenLabel(p.created_at)}</td>
+    <td>${sideTag(p.recommendation||p.direction)} <span class="s" style="color:var(--muted)">${esc(p.symbol)}</span></td>
+    <td>${resultTag(p.status)}</td>
+    <td class="mono">${esc(p.prediction_model_version||'—')}</td>
+    <td class="mono">${esc(p.feature_version||'—')}</td>
+  </tr>`).join('');
+  el.innerHTML = `<div class="tablewrap"><table>
+    <thead><tr><th>Timestamp (UTC)</th><th>Recommendation</th><th>Resolution</th><th>Model version</th><th>Feature version</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+// ------------------------------------------------------------------ orchestrate
+async function loadAll(){
+  $('freshPill').textContent = 'refreshing…';
+  await Promise.all([ loadSummary(), loadBreakdown(), loadActive(), loadCompleted(), loadTimeline() ]);
+  $('freshPill').textContent = 'updated ' + new Date().toLocaleTimeString();
+}
+loadAll();
+</script>
+</body>
+</html>

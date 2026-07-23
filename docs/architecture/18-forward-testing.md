@@ -5,7 +5,7 @@ Turn the **backtest-only** Outcome-Engine edge into a **real, logged, live track
 the single thing standing between "verified in backtest" and any claim of real-money
 viability or a credible product. **This is the most important unbuilt engine in Aegis.**
 
-## Status: 🟡 Building (Sprint 1). M1 store + M2 persistence + M3 engine/resolver/monitor + **M4 REST API** are implemented and tested; dashboard (M5) and full docs (M6) remain. See `sprints/sprint-01-forward-testing-plan.md`.
+## Status: 🟡 Building (Sprint 1). M1 store + M2 persistence + M3 engine/resolver/monitor + **M4 REST API** + **M5 dashboard** are implemented and tested; full docs (M6) remain. See `sprints/sprint-01-forward-testing-plan.md`.
 
 ## Why it is priority #1 (the honest core of the whole project)
 Every positive number in Aegis is backtest. Winning samples are modest (97 crypto / 41
@@ -62,7 +62,8 @@ shared via `request.app.state` (`forward_store` / `forward_engine`).
 | `GET /forward/active?symbol=` | Open predictions (PENDING/ENTRY_TRIGGERED/ACTIVE), oldest first | `200 {count, predictions}` | — |
 | `GET /forward/completed?limit=&symbol=` | Resolved predictions, newest first | `200 {count, predictions}` | — |
 | `GET /forward/stats?symbol=` | Aggregate R-based stats (win rate, PF, avg R, max DD, open risk) | `200 {…}` | — |
-| `GET /forward/summary?symbol=` | Stats **plus** an honest confidence read + sample-size disclaimer | `200 {stats, confidence, note, disclaimer}` | — |
+| `GET /forward/summary?symbol=` | Stats **plus** expectancy, backtest baseline, live-vs-backtest, honest confidence + disclaimer (M5-extended) | `200 {stats, expectancy, backtest, live_vs_backtest, confidence, note, disclaimer}` | — |
+| `GET /forward/breakdown?by=&symbol=` | Grouped aggregates by market/sector/timeframe/confidence/regime (M5) | `200 {dimension, groups, resolved_total}` | `422` unknown dimension |
 
 - **Request validation** (`ForwardPredictionRequest`): `recommendation` must be BUY/SELL
   (a WAIT is not a trade → `422`); `current_price`/`created_candle_ts` > 0; probabilities
@@ -73,6 +74,27 @@ shared via `request.app.state` (`forward_store` / `forward_engine`).
 - **Not in M4** (later milestones): the dashboard panel (M5) and the auto-record path from
   the analysis pipeline + background monitor wiring. The `/track-record` naming below is
   the original sketch; the shipped surface is `/forward/*`.
+
+## Dashboard — as built (Sprint 1 · M5)
+`app/dashboard/static/forward.html`, served at `/dashboard/forward.html` (existing
+StaticFiles mount) and linked from the main dashboard. **Presentation layer only** — it
+consumes `/forward/*` and renders; no business logic in the browser, no direct DB access.
+Six sections: **Overview** (total/active/completed, win rate, PF, avg R, expectancy, avg
+holding, open risk), **Live vs Backtest** (live vs the configured backtest baseline, the
+difference, a 95% CI and an honest status), **Performance Breakdown** (by market / sector /
+timeframe / confidence bucket / regime), **Active Predictions**, **Completed Predictions**,
+and the **Prediction Timeline** (with model + feature versions). Loading, empty, and error
+states are handled; sample size is always shown so a win rate from a few trades is never
+presented as proof.
+- **Server-side aggregation.** Sections 2–3 need data M4 didn't expose, so the Forward API
+  was extended additively: `GET /forward/breakdown` + `backtest`/`live_vs_backtest`/
+  `expectancy` on `/forward/summary`. The math lives in `app/api/forward_analytics.py`
+  (pure functions, no engine imports) — never in the browser.
+- **Backtest baseline** is a configured constant (documented outcome-model WF result: 59.6%
+  win / +0.285 avg R / PF 1.63, `reports/outcome_model_summary.md`), overridable via
+  `AEGIS_FORWARD_BACKTEST_*`; a negative win rate declares "no baseline configured".
+- **Honest status** on live-vs-backtest: `no_data` → `building_sample` (<30) →
+  `inconclusive` / `statistically_significant` (95% CI), never over-claiming.
 
 ## API integration (original sketch — superseded by the `/forward/*` surface above)
 - `GET /track-record` (live stats + significance), `GET /track-record/compare` (live vs

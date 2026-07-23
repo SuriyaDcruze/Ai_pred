@@ -71,6 +71,23 @@ class Settings(BaseSettings):
     binance_api_key: str = ""
     binance_api_secret: str = ""
 
+    # --- Forward Testing: backtest baseline (Sprint 1 · M5) ---
+    # The reference the live forward-testing record is compared against. Sourced from the
+    # documented outcome-model walk-forward backtest (reports/outcome_model_summary.md:
+    # filtered by outcome model — 59.6% win rate, +0.285 avg R, PF 1.63). It is a
+    # *reference for honesty*, not a promise: live must EARN a comparable number over a
+    # large enough sample. Override via env (AEGIS_FORWARD_BACKTEST_*) or set win rate to a
+    # negative value to declare "no baseline configured" (the dashboard then says so).
+    forward_backtest_win_rate: float = Field(
+        0.596, description="Backtest win rate to compare live against; <0 = not configured."
+    )
+    forward_backtest_avg_r: float = Field(0.285, description="Backtest avg R per trade.")
+    forward_backtest_profit_factor: float = Field(1.63, description="Backtest profit factor.")
+    forward_backtest_label: str = Field(
+        "Outcome model (target-before-stop) · walk-forward backtest",
+        description="Human label for the backtest baseline shown on the dashboard.",
+    )
+
     # --- Infra ---
     postgres_dsn: str = "postgresql+asyncpg://aegis:aegis@localhost:5432/aegis"
     redis_url: str = "redis://localhost:6379/0"

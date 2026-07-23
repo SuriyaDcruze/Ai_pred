@@ -18,7 +18,9 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from app.api import forward_analytics as analytics
 from app.api.schemas import ForwardPredictionRequest
+from app.config import settings
 from app.forward_testing.engine import ForwardTestingEngine
 from app.forward_testing.models import PredictionRecord
 from app.forward_testing.store import PredictionStore
@@ -29,7 +31,24 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/forward", tags=["forward-testing"])
 
 #: Below this many resolved trades the live sample proves nothing — we say so out loud.
-_MIN_MEANINGFUL_SAMPLE = 50
+_MIN_MEANINGFUL_SAMPLE = analytics.MIN_MEANINGFUL_SAMPLE
+
+
+def _backtest_baseline() -> dict[str, Any]:
+    """The configured backtest baseline (documented outcome-model WF result).
+
+    A negative win rate means the operator has declared "no baseline configured"; the
+    dashboard then shows that honestly instead of comparing against a made-up number.
+    """
+    wr = settings.forward_backtest_win_rate
+    configured = wr is not None and wr >= 0
+    return {
+        "configured": configured,
+        "win_rate": wr if configured else None,
+        "avg_r": settings.forward_backtest_avg_r if configured else None,
+        "profit_factor": settings.forward_backtest_profit_factor if configured else None,
+        "label": settings.forward_backtest_label,
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -165,16 +184,53 @@ async def summary(
             "keep comparing it against the backtest edge before drawing conclusions."
         )
 
+    baseline = _backtest_baseline()
+    comparison = analytics.live_vs_backtest(
+        data.get("win_rate"),
+        resolved,
+        backtest_win_rate=(baseline["win_rate"] if baseline["configured"] else -1.0),
+    )
+    comparison["backtest_label"] = baseline["label"]
+
     return {
         "stats": data,
+        "expectancy": data.get("avg_r"),   # per-trade expected R (== avg R)
         "confidence": confidence,
         "note": note,
         "min_meaningful_sample": _MIN_MEANINGFUL_SAMPLE,
+        "backtest": baseline,
+        "live_vs_backtest": comparison,
         "disclaimer": (
             "Forward testing is not live trading and not a backtest. It measures whether the "
             "existing models keep their edge on unseen data. A backtest edge is not proven "
             "live until the resolved sample is large enough."
         ),
+    }
+
+
+@router.get("/breakdown")
+async def breakdown(
+    request: Request,
+    by: str = Query("sector", description=f"Group by one of: {analytics.available_dimensions()}"),
+    symbol: str | None = Query(None, description="Optional symbol filter."),
+) -> dict[str, Any]:
+    """Performance grouped by a context dimension (market/sector/timeframe/regime/confidence).
+
+    Aggregation runs **server-side** over the resolved records the store returns — the
+    dashboard never computes stats itself. Unknown dimensions return `422`.
+    """
+    if by not in analytics.available_dimensions():
+        raise HTTPException(
+            status_code=422,
+            detail=f"unknown dimension {by!r}; use one of {analytics.available_dimensions()}",
+        )
+    records = _store(request).list_completed(symbol=symbol)
+    groups = analytics.group_and_aggregate(records, by)
+    return {
+        "dimension": by,
+        "groups": groups,
+        "resolved_total": sum(g["stats"]["resolved"] for g in groups),
+        "min_meaningful_sample": _MIN_MEANINGFUL_SAMPLE,
     }
 
 

@@ -10,8 +10,8 @@
 | **M1** | DB foundation: schema, `PredictionRecord`/`PredictionStatus`, versioned migrations | ✅ **done — approved** | 33 | `f959619` |
 | **M2** | `PredictionStore`: CRUD, duplicate protection, status/resolution updates, active/completed queries, statistics, restart-safe | ✅ **done — approved** | 36 | `b1fa57c` |
 | **M3** | Forward Testing Engine: resolver, state machine, background monitor, restart-safe | ✅ **done — approved** | 23 | `0d2b65c` |
-| **M4** | REST API: `/forward/*` endpoints (POST prediction, get by id, active, completed, stats, summary) | ✅ **done — awaiting review** | 19 | (local) |
-| **M5** | Dashboard: active/completed, win rate, PF, avg R, max DD, holding, open risk | ⏳ pending | — | — |
+| **M4** | REST API: `/forward/*` endpoints (POST prediction, get by id, active, completed, stats, summary) | ✅ **done — approved** | 19 | `d7ac02a` |
+| **M5** | Dashboard: overview, live-vs-backtest, breakdown, active/completed, timeline | ✅ **done — awaiting review** | 17 | (local) |
 | **M6** | Documentation: architecture, API, testing, results | ⏳ pending | — | — |
 
 - **Full suite after M3:** 325 passed, 0 failed. Prediction/Outcome engines untouched &
@@ -27,6 +27,22 @@
   sample-size confidence in `/forward/summary`. 19 API tests, all via a temporary DB — no
   model logic and **no engine imports** (asserted by a test). Prediction/Outcome engines
   untouched (`git status app/ai/` clean).
+- **M5 Dashboard (as built):** `app/dashboard/static/forward.html` — a **presentation-only**
+  page (served by the existing StaticFiles mount at `/dashboard/forward.html`, linked from
+  the main dashboard) that consumes `/forward/*` and renders six sections: Overview,
+  Live-vs-Backtest, Performance Breakdown, Active, Completed, Timeline. No business logic
+  in the browser and no direct DB access. Sections 2–3 needed data the M4 API didn't
+  expose, so the **Forward REST API was extended additively, server-side**: `GET
+  /forward/breakdown?by=market|sector|timeframe|confidence|regime` (grouped aggregates) and
+  new `backtest` / `live_vs_backtest` / `expectancy` fields on `/forward/summary`.
+  Aggregation lives in `app/api/forward_analytics.py` (pure functions, no engine imports).
+  The backtest baseline is a **configured constant** sourced from the documented
+  outcome-model walk-forward result (59.6% win rate / +0.285 avg R / PF 1.63,
+  `reports/outcome_model_summary.md`) — overridable via `AEGIS_FORWARD_BACKTEST_*`, and a
+  negative win rate declares "no baseline configured". `live_vs_backtest` reports an honest
+  status (`no_data` / `building_sample` / `inconclusive` / `statistically_significant`)
+  using a 95% CI, never over-claiming. 17 dashboard tests (temporary DB); M1–M3 core and
+  the Prediction/Outcome/Risk engines untouched.
 - **Push:** M1–M3 are pushed to `SuriyaDcruze/Ai_pred` (repo-local credential override
   selects the `SuriyaDcruze` account; global git/gh config untouched).
 

@@ -30,7 +30,13 @@ limiting) needed before any public exposure.
 | `GET /forward/active?symbol=` | open predictions |
 | `GET /forward/completed?limit=&symbol=` | resolved predictions |
 | `GET /forward/stats?symbol=` | R-based aggregate stats |
-| `GET /forward/summary?symbol=` | stats + honest confidence read + sample-size disclaimer |
+| `GET /forward/summary?symbol=` | stats + expectancy + backtest baseline + live-vs-backtest + honest confidence |
+| `GET /forward/breakdown?by=&symbol=` | grouped aggregates by market/sector/timeframe/confidence/regime (422 on unknown dimension) |
+
+The **Forward Testing dashboard** (`/dashboard/forward.html`, Sprint 1 M5) is a
+presentation-only page over these endpoints — six sections (overview, live-vs-backtest,
+breakdown, active, completed, timeline). All aggregation is server-side
+(`app/api/forward_analytics.py`); the page never touches the DB.
 
 Thin adapters over the M2 store / M3 engine — **no model logic, no engine imports** (the
 LLM/models are never invoked here; the API only persists and reports recommendations the
