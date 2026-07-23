@@ -5,7 +5,7 @@ Turn the **backtest-only** Outcome-Engine edge into a **real, logged, live track
 the single thing standing between "verified in backtest" and any claim of real-money
 viability or a credible product. **This is the most important unbuilt engine in Aegis.**
 
-## Status: 🟡 Building (Sprint 1). M1 store + M2 persistence + M3 engine/resolver/monitor + **M4 REST API** + **M5 dashboard** are implemented and tested; full docs (M6) remain. See `sprints/sprint-01-forward-testing-plan.md`.
+## Status: 🟢 Built (Sprint 1 COMPLETE, `v0.1.0-forward-testing`). M1 store + M2 persistence + M3 engine/resolver/monitor + M4 REST API + M5 dashboard + M6 docs are all delivered and tested (128 forward tests; full suite 361 passed). The engine is built but its **live sample is not yet accumulated** — every number remains backtest until it is. Remaining wiring (auto-record, monitor in lifespan) is tracked in the [Sprint 1 report](../sprints/sprint-01-report.md). See `sprints/sprint-01-forward-testing-plan.md`.
 
 ## Why it is priority #1 (the honest core of the whole project)
 Every positive number in Aegis is backtest. Winning samples are modest (97 crypto / 41

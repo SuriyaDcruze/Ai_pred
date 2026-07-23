@@ -4,7 +4,7 @@
 Define how Aegis stays correct — and, uniquely, how testing enforces **research integrity**
 (no leakage, honest evaluation), not just code correctness.
 
-## Status: 🟢 Strong — ~230 tests, incl. leakage/future-invariance & the honest pipeline.
+## Status: 🟢 Strong — **361 tests** (full suite passing), incl. leakage/future-invariance, the honest pipeline, and the Sprint 1 Forward Testing suite (128 tests).
 
 ## The test pyramid (Aegis-specific)
 ```
@@ -28,6 +28,17 @@ Define how Aegis stays correct — and, uniquely, how testing enforces **researc
 ## Standard tests
 - Features/patterns (61 candlestick detectors verified against textbook cases), risk/rules
   (every gate), sector (scoring + mapping), sentiment, tracker.
+
+## Forward Testing tests (Sprint 1 — 128 tests)
+- **M1** persistence/migrations (33), **M2** store CRUD/dedupe/stats (36), **M3**
+  engine/resolver/monitor incl. cross-thread start-stop (23), **M4** `/forward/*` API incl.
+  validation + 404/409/422 (19), **M5** dashboard data — analytics units, breakdown,
+  live-vs-backtest status, empty/error states, static delivery (17).
+- **Isolation asserted:** AST import-guard tests prove the forward-testing code and API
+  import **neither** `app.ai.sklearn_model` nor `app.ai.outcome_model`.
+- **Never touch production data:** all forward tests use temporary databases (`tmp_path`).
+- **Coverage:** `pytest-cov` is not yet configured — no numeric coverage is claimed (see
+  the Sprint 1 report's Testing section); adding a coverage gate is tracked debt.
 
 ## Principles
 - **Deterministic:** synthetic data + fixed seeds; no network in unit tests.

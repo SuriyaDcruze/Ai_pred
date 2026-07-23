@@ -11,8 +11,15 @@
 | **M2** | `PredictionStore`: CRUD, duplicate protection, status/resolution updates, active/completed queries, statistics, restart-safe | ✅ **done — approved** | 36 | `b1fa57c` |
 | **M3** | Forward Testing Engine: resolver, state machine, background monitor, restart-safe | ✅ **done — approved** | 23 | `0d2b65c` |
 | **M4** | REST API: `/forward/*` endpoints (POST prediction, get by id, active, completed, stats, summary) | ✅ **done — approved** | 19 | `d7ac02a` |
-| **M5** | Dashboard: overview, live-vs-backtest, breakdown, active/completed, timeline | ✅ **done — awaiting review** | 17 | (local) |
-| **M6** | Documentation: architecture, API, testing, results | ⏳ pending | — | — |
+| **M5** | Dashboard: overview, live-vs-backtest, breakdown, active/completed, timeline | ✅ **done — approved** | 17 | `bf85d0b` |
+| **M6** | Documentation & closure: ADRs, API reference, sprint report, results, release notes | ✅ **done** | — | (this) |
+
+> ## 🏁 Sprint 1 status: **COMPLETE** · recommended tag `v0.1.0-forward-testing`
+> All six milestones delivered, plan-gated, with the Prediction/Outcome engines and the
+> M1–M3 core proven untouched throughout. Forward-testing tests: **128**; full suite: **361
+> passed**. Closure docs: [sprint report](../../sprints/sprint-01-report.md) ·
+> [API reference](../../api/forward-testing.md) · [ADRs](../adr/) ·
+> [release notes](../../releases/v0.1.0-forward-testing.md).
 
 - **Full suite after M3:** 325 passed, 0 failed. Prediction/Outcome engines untouched &
   verified unaffected. Forward-testing code imports **nothing** from the engines.

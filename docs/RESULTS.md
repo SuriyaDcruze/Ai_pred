@@ -35,6 +35,37 @@ came from running the code on live market data, out-of-sample, with fees.
 
 ---
 
+## 🏗️ Sprint 1 — Forward Testing Engine (BUILT, v0.1.0)
+
+The instrument that will turn the backtest edge above into a **real, logged, live track
+record** — or honestly disprove it. Status: **COMPLETE** (tag `v0.1.0-forward-testing`).
+Full report: [sprints/sprint-01-report.md](sprints/sprint-01-report.md).
+
+**Sprint 1 achievements**
+- A permanent, auditable store (`data/prediction_history.db`) that records every actionable
+  recommendation with full context + three independent version stamps; creation fields are
+  immutable, only lifecycle columns change on resolve.
+- An engine that resolves each prediction against real future price (target / stop / expiry,
+  stop-first pessimistic), restart-safe and idempotent.
+- A REST API (`/forward/*`) and an honest dashboard (`/dashboard/forward.html`) that always
+  show sample size and distinguish **live from backtest** (95% CI; `no_data` →
+  `building_sample` → `inconclusive` → `statistically_significant`).
+- Built **without touching** the Prediction or Outcome engines (ADR 0002/0003 — proven by
+  import-guard tests). **128** forward-testing tests; full suite **361 passed**.
+
+**Current capabilities**
+- Record → resolve → report, with grouped breakdowns (market / sector / timeframe /
+  confidence / regime) and a live-vs-backtest comparison against the documented baseline.
+- Everything is honest by construction: it refuses to present a handful of trades as proof.
+
+**Remaining work (before "proven live")**
+- **Accumulate the live sample** — 50–100+ resolved live trades (this is the point; not yet
+  done). Every number is still backtest.
+- Wire the background monitor into the app + an auto-record path from the pipeline.
+- Then, and only then, revisit any real-money / product claim (ADR 0004).
+
+---
+
 ## 🧭 The journey — what we tried, in order, and what each gave us
 
 ### 1. The original deep neural network (TCN + Transformer)
