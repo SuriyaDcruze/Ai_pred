@@ -51,7 +51,7 @@ The individual volumes are authored on approval, in the priority agreed below.
 | 15 | [**Learning Engine**](15-learning-engine.md) | Meta-model + nightly champion/challenger retrain | 🟡 built, needs data |
 | 16 | [**User Profile**](16-user-profile.md) | Preferences, watchlists, risk appetite, auth identity | 🔴 not built |
 | 17 | [**Paper Trading**](17-paper-trading.md) | Log recommendations, score vs real future price | 🟡 tracker exists |
-| 18 | [**Forward Testing**](18-forward-testing.md) ⭐ | The live-proof engine — turn backtest edge into a record | 🔴 the key gap |
+| 18 | [**Forward Testing**](18-forward-testing.md) ⭐ | The live-proof engine — turn backtest edge into a record | 🟡 building (Sprint 1: M1+M2 done — DB + Store) |
 | 19 | [**Backend Architecture**](19-backend-architecture.md) | FastAPI app, service layer, async, background tasks | 🟡 monolith |
 | 20 | [**API Architecture**](20-api-architecture.md) | REST/WS contracts, versioning, gateway, rate limits, auth | 🟡 unversioned |
 | 21 | [**Database Design**](21-database-design.md) | From SQLite → Postgres; schema for predictions/users/trades | 🟡 minimal |
