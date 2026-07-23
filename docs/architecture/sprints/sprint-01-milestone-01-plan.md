@@ -1,4 +1,11 @@
-# Sprint 1 · Milestone 1 — Schema + Prediction Models + Migration (plan, awaiting approval)
+# Sprint 1 · Milestone 1 — Schema + Prediction Models + Migration ✅ IMPLEMENTED
+
+> **Status: complete.** 33 M1 tests pass; full suite 194 passed. Prediction/Outcome
+> engines untouched and verified unaffected. Awaiting review before Milestone 2.
+> *(Scope note: `versioning.py` was drafted then removed — it was not in the approved M1
+> file list. Version stamps are defined as schema columns + model fields here and are
+> populated in a later milestone.)*
+
 
 > Scope of M1 only: the **long-term database schema**, the **Prediction domain models**,
 > the **migration mechanism**, and **unit tests**. Then STOP for review.
