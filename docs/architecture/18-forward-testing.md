@@ -5,7 +5,7 @@ Turn the **backtest-only** Outcome-Engine edge into a **real, logged, live track
 the single thing standing between "verified in backtest" and any claim of real-money
 viability or a credible product. **This is the most important unbuilt engine in Aegis.**
 
-## Status: 🔴 Not built — specified here. Recommended first implementation (Vol 04 §1).
+## Status: 🟡 Building (Sprint 1). M1 store + M2 persistence + M3 engine/resolver/monitor + **M4 REST API** are implemented and tested; dashboard (M5) and full docs (M6) remain. See `sprints/sprint-01-forward-testing-plan.md`.
 
 ## Why it is priority #1 (the honest core of the whole project)
 Every positive number in Aegis is backtest. Winning samples are modest (97 crypto / 41
@@ -49,7 +49,32 @@ is the **discipline layer**: log the AI's *TAKE decisions specifically*, at scal
 ## Data (Vol 21)
 - A `live_predictions` table (context + outcome + version stamps); aggregate views.
 
-## API integration (target)
+## REST API — as built (Sprint 1 · M4)
+All under `/forward/*`, mounted from `app/api/forward.py` (an `APIRouter`). Each endpoint
+is a thin adapter over the M2 `PredictionStore` / M3 `ForwardTestingEngine` — **no model
+logic, no engine imports**. The store + engine are created once in the app lifespan and
+shared via `request.app.state` (`forward_store` / `forward_engine`).
+
+| Method · Path | Purpose | Success | Errors |
+|---|---|---|---|
+| `POST /forward/prediction` | Record a BUY/SELL recommendation for forward testing | `201 {prediction}` | `422` invalid body; `409` duplicate (same symbol·tf·candle·source) |
+| `GET /forward/prediction/{id}` | One record by id | `200 {prediction}` | `404` unknown id |
+| `GET /forward/active?symbol=` | Open predictions (PENDING/ENTRY_TRIGGERED/ACTIVE), oldest first | `200 {count, predictions}` | — |
+| `GET /forward/completed?limit=&symbol=` | Resolved predictions, newest first | `200 {count, predictions}` | — |
+| `GET /forward/stats?symbol=` | Aggregate R-based stats (win rate, PF, avg R, max DD, open risk) | `200 {…}` | — |
+| `GET /forward/summary?symbol=` | Stats **plus** an honest confidence read + sample-size disclaimer | `200 {stats, confidence, note, disclaimer}` | — |
+
+- **Request validation** (`ForwardPredictionRequest`): `recommendation` must be BUY/SELL
+  (a WAIT is not a trade → `422`); `current_price`/`created_candle_ts` > 0; probabilities
+  in `[0,1]`; sides are upper-cased. Rejections are FastAPI `422` with field detail.
+- **Honesty built in:** `/forward/summary` returns `confidence = no_data` (0 resolved),
+  `insufficient_sample` (< 50 resolved), or `building` (≥ 50), each with plain-language
+  text — the API refuses to present a handful of trades as proof.
+- **Not in M4** (later milestones): the dashboard panel (M5) and the auto-record path from
+  the analysis pipeline + background monitor wiring. The `/track-record` naming below is
+  the original sketch; the shipped surface is `/forward/*`.
+
+## API integration (original sketch — superseded by the `/forward/*` surface above)
 - `GET /track-record` (live stats + significance), `GET /track-record/compare` (live vs
   backtest). Dashboard panel replacing the old You-vs-AI with an honest live scoreboard.
 

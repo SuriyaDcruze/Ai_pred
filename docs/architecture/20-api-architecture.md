@@ -19,7 +19,22 @@ limiting) needed before any public exposure.
 | `GET /news`, `/risk-notice` | news sentiment, learning-mode banner |
 | `POST /chat` | conversation (Vol 07) |
 | `/calls*`, `/round`, `/autolog` | paper trading (Vol 17) |
+| `/forward/*` | Forward Testing — record & score live recommendations (Vol 18, Sprint 1 M4) |
 | `WS /ws/signals` | live chart + signal stream |
+
+### `/forward/*` (Forward Testing, `app/api/forward.py`)
+| Endpoint | Purpose |
+|---|---|
+| `POST /forward/prediction` | record a BUY/SELL recommendation (`201`; `409` duplicate; `422` invalid) |
+| `GET /forward/prediction/{id}` | one record (`404` if unknown) |
+| `GET /forward/active?symbol=` | open predictions |
+| `GET /forward/completed?limit=&symbol=` | resolved predictions |
+| `GET /forward/stats?symbol=` | R-based aggregate stats |
+| `GET /forward/summary?symbol=` | stats + honest confidence read + sample-size disclaimer |
+
+Thin adapters over the M2 store / M3 engine — **no model logic, no engine imports** (the
+LLM/models are never invoked here; the API only persists and reports recommendations the
+engines already produced).
 
 ## Contracts
 - Pydantic request/response models (`app/api/schemas.py`) — typed, validated.

@@ -29,11 +29,14 @@ from app.api.schemas import (
     PredictRequest,
     RecordCallRequest,
 )
+from app.api.forward import router as forward_router
 from app.chat.assistant import TradingAssistant
 from app.config import settings
 from app.data.schemas import Candle, candles_to_frame
 from app.decision.rules import RuleStore, check_rules, trades_today
 from app.features.sentiment import fetch_news
+from app.forward_testing.engine import ForwardTestingEngine
+from app.forward_testing.store import PredictionStore
 from app.service import AnalysisService
 from app.stream.binance import BinanceClient
 from app.utils.logging import get_logger
@@ -61,6 +64,12 @@ async def lifespan(app: FastAPI):
 
     app.state.calls = CallStore()
     app.state.rules = RuleStore()          # your personal trading checklist
+    # Forward Testing (Sprint 1) — the store + engine over prediction_history.db.
+    # The /forward/* API consumes these; the background monitor is wired in a later
+    # milestone. Read-only with respect to the Prediction/Outcome engines.
+    forward_store = PredictionStore()
+    app.state.forward_store = forward_store
+    app.state.forward_engine = ForwardTestingEngine(forward_store)
     # Hands-free AI logging — config lives on the server, so it keeps running
     # even when every browser tab is closed.
     app.state.autolog = {"enabled": False, "symbol": "BTCUSDT", "timeframe": "1m"}
@@ -70,6 +79,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         autolog_task.cancel()
+        forward_store.close()
 
 
 app = FastAPI(title="Aegis Trading AI", version=__version__, lifespan=lifespan)
@@ -79,6 +89,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(forward_router)   # Forward Testing — /forward/* (Sprint 1 · M4)
 
 
 def _provider(symbol: str):

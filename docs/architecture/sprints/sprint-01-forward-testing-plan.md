@@ -8,9 +8,9 @@
 | Milestone | Scope | Status | Tests | Commit |
 |-----------|-------|--------|-------|--------|
 | **M1** | DB foundation: schema, `PredictionRecord`/`PredictionStatus`, versioned migrations | ✅ **done — approved** | 33 | `f959619` |
-| **M2** | `PredictionStore`: CRUD, duplicate protection, status/resolution updates, active/completed queries, statistics, restart-safe | ✅ **done — awaiting review** | 36 | `b1fa57c` |
-| **M3** | Forward Testing Engine: resolver, state machine, background monitor, restart-safe | ✅ **done — awaiting review** | 23 | (local) |
-| **M4** | REST API: `/forward/*` endpoints | ⏳ pending | — | — |
+| **M2** | `PredictionStore`: CRUD, duplicate protection, status/resolution updates, active/completed queries, statistics, restart-safe | ✅ **done — approved** | 36 | `b1fa57c` |
+| **M3** | Forward Testing Engine: resolver, state machine, background monitor, restart-safe | ✅ **done — approved** | 23 | `0d2b65c` |
+| **M4** | REST API: `/forward/*` endpoints (POST prediction, get by id, active, completed, stats, summary) | ✅ **done — awaiting review** | 19 | (local) |
 | **M5** | Dashboard: active/completed, win rate, PF, avg R, max DD, holding, open risk | ⏳ pending | — | — |
 | **M6** | Documentation: architecture, API, testing, results | ⏳ pending | — | — |
 
@@ -18,9 +18,17 @@
   verified unaffected. Forward-testing code imports **nothing** from the engines.
   M3 note: added `check_same_thread=False` + a store lock so the background monitor's
   worker thread can share the connection safely (a real concurrency bug the tests caught).
-- **⚠️ Push blocked:** commits `f959619` (M1) + `b1fa57c` (M2) are local only — the remote
-  returns `403 Permission denied to Suriyar-Dcruze` for `SuriyaDcruze/Ai_pred`. Grant that
-  account write access (or re-auth git) and `git push origin main` sends both.
+- **Persistence:** the single store is **`data/prediction_history.db`** (created lazily by
+  the first migration run) — there is no separate `forward.db`.
+- **M4 REST API (as built):** `app/api/forward.py` (`APIRouter`, `/forward/*`) mounted in
+  `app/api/main.py`; store + engine created in the lifespan on `app.state`. Six endpoints
+  (POST prediction, GET by id, active, completed, stats, summary), pydantic request
+  validation (`ForwardPredictionRequest`), `404`/`409`/`422` error handling, honest
+  sample-size confidence in `/forward/summary`. 19 API tests, all via a temporary DB — no
+  model logic and **no engine imports** (asserted by a test). Prediction/Outcome engines
+  untouched (`git status app/ai/` clean).
+- **Push:** M1–M3 are pushed to `SuriyaDcruze/Ai_pred` (repo-local credential override
+  selects the `SuriyaDcruze` account; global git/gh config untouched).
 
 ## Guardrails (verified against the repo)
 - **Do NOT touch** the Prediction Engine (`app/ai/sklearn_model.py`) or Outcome Engine
@@ -87,8 +95,8 @@ Config-gated (off by default until watchlist configured); cancels cleanly on shu
 | `models.py` | `PredictionRecord` dataclass + `PredictionStatus` enum (the 8 states) |
 | `store.py` | `PredictionStore` (SQLite) — create/get/list/update, stats; unique-index dedupe |
 | `resolver.py` | resolve one OPEN record against candles (reuses `tracker.resolve_call` barrier logic; adds EXPIRED + entry-trigger) |
-| `engine.py` | `ForwardTestingEngine` — `record_from_recommendation()`, `monitor_once()`, `stats()` |
-| `scheduler.py` | the async monitor loop (started in lifespan) |
+| `engine.py` | `ForwardTestingEngine` — `record()`, `monitor_once()` |
+| `monitor.py` | the async monitor loop (`ForwardTestingMonitor`; wired into lifespan in a later milestone) |
 
 **New tests:** `tests/test_forward_testing.py` (unit + integration + e2e).
 
@@ -111,30 +119,38 @@ Config-gated (off by default until watchlist configured); cancels cleanly on shu
 
 ## 3. Database changes
 
-New SQLite store `data/forward.db` (kept separate from the You-vs-AI `calls.db`; migrates
-to Postgres per Vol 21 later). One table:
+The permanent long-term store **`data/prediction_history.db`** (kept separate from the
+legacy You-vs-AI `calls.db`; migrates to Postgres per Vol 21 later). It is the single
+store for Forward Testing, Historical Memory, Learning, Similarity, and the Model
+Registry (future) — new tables arrive as new migrations. As-built schema
+(migration `0001_create_predictions`, see `app/database/migrations.py`):
 
 ```sql
 CREATE TABLE predictions (
   prediction_id   TEXT PRIMARY KEY,
-  created_at      TEXT, created_candle_ts INTEGER,
+  created_at TEXT, updated_at TEXT, created_candle_ts INTEGER,
   symbol TEXT, exchange TEXT, timeframe TEXT, source TEXT,
-  current_price   REAL,
+  current_price REAL,
   direction TEXT, direction_prob REAL, outcome_prob REAL, decision_score REAL,
+  recommendation TEXT,
   entry REAL, stop REAL, target1 REAL, target2 REAL,
-  recommendation  TEXT,
-  model_version TEXT, feature_version TEXT,           -- stamped from artifact meta
+  -- rich context (explainability + future learning), individually queryable:
+  market_regime TEXT, market_phase TEXT, sector TEXT, session TEXT,
+  volatility_bucket TEXT, similarity_score REAL, context_json TEXT,
+  -- three independent version stamps:
+  prediction_model_version TEXT, outcome_model_version TEXT, feature_version TEXT,
   status TEXT,                                        -- the 8-state enum
   resolved_at TEXT, resolved_price REAL, resolution_reason TEXT,
-  realised_r REAL, holding_bars INTEGER,
-  market_context_json TEXT                            -- market state, sector, similarity
+  realised_r REAL, holding_bars INTEGER
 );
-CREATE UNIQUE INDEX idx_once ON predictions(symbol, timeframe, created_candle_ts, source);
+CREATE UNIQUE INDEX idx_pred_once ON predictions(symbol, timeframe, created_candle_ts, source);
+CREATE INDEX idx_pred_status ON predictions(status);
+CREATE INDEX idx_pred_symbol_created ON predictions(symbol, created_at);
 ```
-- **Immutable:** creation fields never edited; only status/resolution columns are written
-  on resolve (audit-friendly, Vol 34).
-- **Version stamps:** `model_version` = sklearn artifact meta (`model_name`+train range);
-  `feature_version` = hash of `FeatureBuilder.feature_columns`.
+- **Immutable:** creation fields never edited; only status/resolution columns change on
+  resolve — enforced by the store's lifecycle-only writes (audit-friendly, Vol 34).
+- **Version stamps:** three independent columns (`prediction_model_version`,
+  `outcome_model_version`, `feature_version`) — a model swap never invalidates old records.
 
 ## 4. New APIs (`/forward/*` — existing APIs untouched)
 
