@@ -75,6 +75,11 @@ The first module has been **built**, not just specified. Closure artifacts:
 - **[Architecture Decision Records](adr/)** — modular monolith · immutable engines ·
   forward-testing-before-production · single database · API/engine separation.
 
+## 📐 Next: Sprint 2 — Historical Memory Engine (design, awaiting approval)
+[Sprint 2 architecture & implementation plan](sprints/sprint-02-historical-memory-plan.md) —
+the permanent knowledge layer over completed predictions (satellite tables + composed Memory
+Record + retrieval). **Planning only; no implementation until approved.**
+
 ## ✅ Book status: all 28 volumes authored (v1.0) · Review complete → v1.1 proposed
 
 The Architecture Book is complete and is the permanent technical foundation. Per the
