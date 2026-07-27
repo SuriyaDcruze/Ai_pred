@@ -30,6 +30,7 @@ from app.api.schemas import (
     RecordCallRequest,
 )
 from app.api.forward import router as forward_router
+from app.api.memory import router as memory_router
 from app.chat.assistant import TradingAssistant
 from app.config import settings
 from app.data.schemas import Candle, candles_to_frame
@@ -37,6 +38,9 @@ from app.decision.rules import RuleStore, check_rules, trades_today
 from app.features.sentiment import fetch_news
 from app.forward_testing.engine import ForwardTestingEngine
 from app.forward_testing.store import PredictionStore
+from app.memory.builder import MemoryBuilder
+from app.memory.retrieval import RetrievalEngine
+from app.memory.store import MemoryStore
 from app.service import AnalysisService
 from app.stream.binance import BinanceClient
 from app.utils.logging import get_logger
@@ -70,6 +74,13 @@ async def lifespan(app: FastAPI):
     forward_store = PredictionStore()
     app.state.forward_store = forward_store
     app.state.forward_engine = ForwardTestingEngine(forward_store)
+    # Historical Memory (Sprint 2) — satellite store + read/enrich layers over the same
+    # prediction_history.db. The /memory/* API consumes these; read-only wrt predictions and
+    # the Prediction/Outcome engines (imports neither).
+    memory_store = MemoryStore()
+    app.state.memory_store = memory_store
+    app.state.retrieval = RetrievalEngine(forward_store, memory_store)
+    app.state.memory_builder = MemoryBuilder(forward_store, memory_store)
     # Hands-free AI logging — config lives on the server, so it keeps running
     # even when every browser tab is closed.
     app.state.autolog = {"enabled": False, "symbol": "BTCUSDT", "timeframe": "1m"}
@@ -80,6 +91,7 @@ async def lifespan(app: FastAPI):
     finally:
         autolog_task.cancel()
         forward_store.close()
+        memory_store.close()
 
 
 app = FastAPI(title="Aegis Trading AI", version=__version__, lifespan=lifespan)
@@ -90,6 +102,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(forward_router)   # Forward Testing — /forward/* (Sprint 1 · M4)
+app.include_router(memory_router)    # Historical Memory — /memory/* (Sprint 2 · M5)
 
 
 def _provider(symbol: str):

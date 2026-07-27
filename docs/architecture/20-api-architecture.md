@@ -20,6 +20,7 @@ limiting) needed before any public exposure.
 | `POST /chat` | conversation (Vol 07) |
 | `/calls*`, `/round`, `/autolog` | paper trading (Vol 17) |
 | `/forward/*` | Forward Testing — record & score live recommendations (Vol 18, Sprint 1 M4) |
+| `/memory/*` | Historical Memory — composed records, search, stats, timeline, similarity contract, GPT context (Vol 13, Sprint 2 M5) |
 | `WS /ws/signals` | live chart + signal stream |
 
 ### `/forward/*` (Forward Testing, `app/api/forward.py`)
@@ -41,6 +42,23 @@ breakdown, active, completed, timeline). All aggregation is server-side
 Thin adapters over the M2 store / M3 engine — **no model logic, no engine imports** (the
 LLM/models are never invoked here; the API only persists and reports recommendations the
 engines already produced).
+
+### `/memory/*` (Historical Memory, `app/api/memory.py`)
+| Endpoint | Purpose |
+|---|---|
+| `GET /memory/record/{prediction_id}` | one composed Memory Record (404 if unknown) |
+| `GET /memory/search` | filtered + keyset-paginated search |
+| `GET /memory/statistics` | aggregate rollups + sample size (never computed in the API) |
+| `GET /memory/timeline` | chronological records for a symbol / date window |
+| `GET /memory/similar/{prediction_id}` | similarity contract — explicit *unavailable* (no fake scores) |
+| `GET /memory/context` | bounded, deterministic GPT grounding bundle |
+| `POST /memory/build/{prediction_id}` | enrich one prediction (idempotent) |
+| `POST /memory/backfill` | enrich all resolved-but-unbuilt (idempotent); returns counts |
+| `POST /memory/rebuild-aggregates` | recompute rollups from source |
+
+Thin transport over the Retrieval Engine + Memory Builder (thin-controller pattern) — **no
+business logic, no direct DB access, no engine imports**. Errors map to `404`/`422`/`500`
+with no stack traces.
 
 ## Contracts
 - Pydantic request/response models (`app/api/schemas.py`) — typed, validated.

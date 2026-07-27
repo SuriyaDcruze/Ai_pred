@@ -5,12 +5,11 @@ Store **every prediction and its real outcome, permanently** — the foundation 
 learning, forward-testing, similarity, failure analysis, and the "what changed since
 yesterday" experience. *"I have seen this market before."*
 
-## Status: 🟡 Building (Sprint 2). **M1 schema + M2 Store + M3 Builder + M4 Retrieval
-Engine delivered.** Satellite schema (migrations `0002`–`0005`), domain models, the **Memory
-Store** (idempotent CRUD), the **Memory Builder** (enrich + aggregates + backfill), and now
-the **Retrieval Engine** — composes Memory Records on read, with filtered search, keyset
-pagination, aggregate reads, the similarity contract, and a GPT context bundle. REST API is
-the last milestone. See `sprints/sprint-02-historical-memory-plan.md`.
+## Status: 🟡 Building (Sprint 2). **M1 schema + M2 Store + M3 Builder + M4 Retrieval +
+M5 REST API delivered.** Satellite schema (migrations `0002`–`0005`), domain models, the
+**Memory Store**, the **Memory Builder**, the **Retrieval Engine**, and now the **`/memory/*`
+REST API** — a thin transport layer over retrieval + builder, mounted beside `/forward/*`.
+Only documentation (M6) remains. See `sprints/sprint-02-historical-memory-plan.md`.
 
 ### As built — M1 (schema foundation)
 - **Satellite design, not a copy.** Historical Memory extends the Sprint 1 `predictions`
@@ -86,6 +85,21 @@ the last milestone. See `sprints/sprint-02-historical-memory-plan.md`.
   over-claim. 24 integration tests (composition, missing satellites, every filter,
   pagination completeness, aggregate reads, similarity-unavailable, GPT bundle, empty + large
   datasets, `predictions` unchanged / no writes).
+
+### As built — M5 (`/memory/*` REST API)
+- `app/api/memory.py` — a thin `APIRouter` (thin-controller pattern, ADR 0006) mounted in
+  `app/api/main.py` beside `/forward/*`. Retrieval + builder + store are created once in the
+  lifespan on `app.state`. Handlers hold **no** business logic, never touch the DB directly,
+  and import neither engine (asserted).
+- **Nine endpoints:** `GET /memory/record/{id}`, `/search`, `/statistics`, `/timeline`,
+  `/similar/{id}`, `/context`; `POST /memory/build/{id}`, `/backfill`, `/rebuild-aggregates`.
+- **Validation + consistent errors:** pydantic + FastAPI `Query` bounds; domain errors mapped
+  to `404` (unknown prediction), `422` (invalid filter/cursor/dimension), `500` (generic —
+  **no stack trace**). `/statistics` always reports sample size (from the combined rollups,
+  not double-counted). `/similar` returns the documented *unavailable* — no fake scores.
+- Pydantic response models + generated **OpenAPI**; structured logging of endpoint / duration
+  / status / prediction-id — never content. 23 API tests (every endpoint, validation,
+  pagination, errors, OpenAPI generation, router mounts, no engine imports).
 
 ## Responsibilities
 - Persist each recommendation with full context and later resolve its outcome.
