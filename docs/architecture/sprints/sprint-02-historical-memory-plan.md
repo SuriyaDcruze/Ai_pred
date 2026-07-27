@@ -6,7 +6,8 @@
 > then one milestone at a time with a review gate after each.
 >
 > **Status:** 🔨 Approved — implementing milestone by milestone.
-> **M1 (Database Extension): ✅ done — awaiting review.** M2–M6 pending.
+> **M1 (Database Extension): ✅ done.** **M2 (Memory Store): ✅ done — awaiting review.**
+> M3–M6 pending.
 
 **Related:** Vol 13 (Historical Memory), Vol 14 (Similarity), Vol 15 (Learning), Vol 21
 (Database Design), Vol 18 (Forward Testing — the upstream producer),
@@ -502,7 +503,7 @@ The suggested M1–M6 structure is sound and adopted, with two refinements (just
 | M | Title | Scope | Deliverables | Depends on |
 |---|---|---|---|---|
 | **M1** ✅ | Database Extension | Migrations `0002`–`0005` (memory_reasoning/embeddings/aggregates + additive `predictions` indexes); satellite dataclasses + enums; `schema_version` | **done:** migrations, `app/memory/models.py`, 16 migration tests (incl. populated Sprint-1 upgrade). T4 `memory_news` **deferred** (optional). | — |
-| **M2** | Memory Store | `MemoryStore`: CRUD over satellite tables only; idempotent upserts keyed by `prediction_id`; thread-safe like `PredictionStore` | store + unit tests | M1 |
+| **M2** ✅ | Memory Store | `MemoryStore`: CRUD over satellite tables only; idempotent upserts; thread-safe like `PredictionStore` | **done:** `app/memory/store.py` + `errors.py`; 27 unit tests (CRUD, upsert, concurrency, rollback, FK, schema). No Sprint 1 files touched. | M1 |
 | **M3** | Memory Builder | `MemoryBuilder`: enrich a resolved prediction → satellites; incremental **aggregate** maintenance; **backfill**; optional post-resolution hook | builder + integration tests | M2 |
 | **M4** | Retrieval Engine | Compose Memory Record; all §5.2 filters + pagination; aggregate reads; **similarity contract** (explicit "unavailable"); GPT context bundle shape | retrieval + tests | M3 |
 | **M5** | REST API | `/memory/*` router mounted in `api/main.py`; validation; error handling; honest sample-size reporting | router + API tests | M4 |

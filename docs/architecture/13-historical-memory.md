@@ -5,11 +5,11 @@ Store **every prediction and its real outcome, permanently** — the foundation 
 learning, forward-testing, similarity, failure analysis, and the "what changed since
 yesterday" experience. *"I have seen this market before."*
 
-## Status: 🟡 Building (Sprint 2). **M1 database foundation delivered** — the satellite
+## Status: 🟡 Building (Sprint 2). **M1 schema + M2 Memory Store delivered.** The satellite
 schema (`memory_reasoning`, `memory_embeddings`, `memory_aggregates`) + additive retrieval
-indexes, added by append-only migrations `0002`–`0005` over `prediction_history.db`, plus
-the satellite domain models. Store, Builder, Retrieval Engine, and REST API are later
-milestones. See `sprints/sprint-02-historical-memory-plan.md`.
+indexes (migrations `0002`–`0005`), the satellite domain models, and now the **Memory Store**
+— thread-safe, idempotent CRUD over the satellite tables. Builder, Retrieval Engine, and REST
+API are later milestones. See `sprints/sprint-02-historical-memory-plan.md`.
 
 ### As built — M1 (schema foundation)
 - **Satellite design, not a copy.** Historical Memory extends the Sprint 1 `predictions`
@@ -26,6 +26,23 @@ milestones. See `sprints/sprint-02-historical-memory-plan.md`.
   build/retrieval logic yet.
 - **Independence:** `app/memory/*` imports neither the Prediction nor Outcome engine
   (asserted by test). 16 migration/schema tests; full suite green.
+
+### As built — M2 (Memory Store)
+- `app/memory/store.py` — **`MemoryStore`**: persistence only over the three satellite
+  tables. Reasoning (create/upsert/update/get/exists/delete), embeddings
+  (create/upsert/update/get/list/exists — stores vectors, never computes them), aggregates
+  (upsert/get/list/exists/delete — writes values, never computes them).
+- **Guarantees** mirror `PredictionStore`: a `threading.RLock` + shared connection
+  (`check_same_thread=False`) for thread safety; every write in a transaction (commit on
+  success, **rollback** on error); **idempotent upserts** keyed by natural identity
+  (`prediction_id`; `(prediction_id, embedding_kind)`; `(dimension, bucket, model_version)`)
+  so repeated writes never duplicate and converge to the same state.
+- **Typed errors** (`app/memory/errors.py`), never silent: `MemoryNotFoundError`,
+  `MemoryConflictError` (PK/unique), `MemoryForeignKeyError` (unknown prediction),
+  `MemorySchemaError` (unsupported `schema_version`). Structured logging on
+  create/update/delete/rollback/constraint violations — identities only, never content.
+- **Writes only satellite tables** — never `predictions` (asserted by test). 27 unit tests
+  incl. concurrent writes; no engine imports (asserted).
 
 ## Responsibilities
 - Persist each recommendation with full context and later resolve its outcome.

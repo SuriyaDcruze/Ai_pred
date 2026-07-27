@@ -9,13 +9,21 @@ It **stores facts; it never creates them**: it performs no inference, never retr
 and never modifies a prediction's results. It is strictly independent of the Prediction and
 Outcome engines (it imports neither).
 
-**Milestone 1 (this package's current state)** provides only the database foundation: the
-satellite schema (via new append-only migrations) and the domain models for the satellite
-rows. The Memory Store, Builder, Retrieval Engine and REST API arrive in later milestones.
+**Current state (Milestones 1–2):** the database foundation (satellite schema via
+append-only migrations + domain models) and the **Memory Store** — thread-safe, idempotent
+CRUD over the satellite tables. The Memory Builder, Retrieval Engine and REST API arrive in
+later milestones.
 """
 
 from __future__ import annotations
 
+from app.memory.errors import (
+    MemoryConflictError,
+    MemoryForeignKeyError,
+    MemoryNotFoundError,
+    MemorySchemaError,
+    MemoryStoreError,
+)
 from app.memory.models import (
     DEFAULT_EMBEDDING_KIND,
     MEMORY_SCHEMA_VERSION,
@@ -26,8 +34,10 @@ from app.memory.models import (
     pack_vector,
     unpack_vector,
 )
+from app.memory.store import MemoryStore
 
 __all__ = [
+    # models
     "MemoryReasoning",
     "MemoryEmbedding",
     "MemoryAggregate",
@@ -36,4 +46,12 @@ __all__ = [
     "DEFAULT_EMBEDDING_KIND",
     "pack_vector",
     "unpack_vector",
+    # store
+    "MemoryStore",
+    # errors
+    "MemoryStoreError",
+    "MemoryNotFoundError",
+    "MemoryConflictError",
+    "MemoryForeignKeyError",
+    "MemorySchemaError",
 ]
