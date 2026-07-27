@@ -5,11 +5,30 @@ Define persistence: what is stored, in what schema, and the migration path from 
 current SQLite tracker to a Postgres store that supports Historical Memory, Forward
 Testing, and multi-user.
 
-## Status: 🟡 Minimal — SQLite via `app/tracking/tracker.py`; `app/database/models.py` stub.
+## Status: 🟡 Growing — SQLite. `data/prediction_history.db` is the permanent store
+(Sprint 1 Forward Testing + Sprint 2 Historical Memory schema); legacy `data/calls.db`
+(You-vs-AI tracker) unchanged. Postgres remains the future path.
 
 ## Current
 - **SQLite** `data/calls.db`: `calls` table (TrackedCall) with a unique partial index for
   AI-call dedupe per candle. Rules stored in a `rules` table. Good enough for single-user.
+- **SQLite** `data/prediction_history.db`: the permanent memory, evolved only by
+  **append-only, versioned, idempotent** migrations (`app/database/migrations.py`):
+  - `0001` **`predictions`** (Sprint 1) — the canonical, immutable fact table.
+  - `0002` **`memory_reasoning`** — the "why" (rationale/factors/rule-check), 1:1 with a
+    prediction; index on `confidence`.
+  - `0003` **`memory_embeddings`** — vector placeholder for Similarity (Vol 14); unique
+    `(prediction_id, embedding_kind)`, index on `embedding_kind`; `vector` NULL until filled.
+  - `0004` **`memory_aggregates`** — derived performance rollups, PK
+    `(dimension, bucket, model_version)`; index on `dimension`.
+  - `0005` additive **retrieval indexes** on `predictions` (`(sector,status)`,
+    `(market_regime,status)`, `(prediction_model_version,status)`, `(timeframe,created_at)`)
+    — metadata only; existing indexes untouched.
+- **Design note (Sprint 2 M1):** Historical Memory uses **satellite tables** keyed on
+  `prediction_id`, never a copy of `predictions`. The composed *Memory Record* is a read
+  model (a later milestone). This keeps `predictions` immutable, every change additive, and
+  rollback a clean table drop. Migration tests verify a fresh DB, a populated Sprint-1 DB
+  upgrade (predictions byte-for-byte unchanged), idempotency, and rollback safety.
 
 ## Target schema (Postgres)
 ```

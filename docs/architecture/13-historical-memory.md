@@ -5,8 +5,27 @@ Store **every prediction and its real outcome, permanently** — the foundation 
 learning, forward-testing, similarity, failure analysis, and the "what changed since
 yesterday" experience. *"I have seen this market before."*
 
-## Status: 🟡 Partial — `app/tracking/tracker.py` (SQLite call store). Needs a proper
-prediction store (Vol 21).
+## Status: 🟡 Building (Sprint 2). **M1 database foundation delivered** — the satellite
+schema (`memory_reasoning`, `memory_embeddings`, `memory_aggregates`) + additive retrieval
+indexes, added by append-only migrations `0002`–`0005` over `prediction_history.db`, plus
+the satellite domain models. Store, Builder, Retrieval Engine, and REST API are later
+milestones. See `sprints/sprint-02-historical-memory-plan.md`.
+
+### As built — M1 (schema foundation)
+- **Satellite design, not a copy.** Historical Memory extends the Sprint 1 `predictions`
+  table with side tables keyed on `prediction_id`; it stores only what `predictions` does
+  not (reasoning, embeddings, derived aggregates). `predictions` stays immutable and
+  untouched (proven by migration tests: fresh DB, populated Sprint-1 upgrade, idempotency,
+  rollback safety).
+- **Tables:** `memory_reasoning` (1:1 — rationale/factors/rule-check + indexable
+  `confidence`); `memory_embeddings` (Similarity placeholder — packed-float32 `vector`, NULL
+  until Vol 14 fills it, multiple kinds per prediction); `memory_aggregates` (derived
+  rollups, keyed by dimension/bucket/model_version — rebuildable, never a source of truth).
+- **Models:** `MemoryReasoning`, `MemoryEmbedding`, `MemoryAggregate` (+ `AggregateDimension`)
+  in `app/memory/models.py` — persistence mapping only, **no** engine imports, **no**
+  build/retrieval logic yet.
+- **Independence:** `app/memory/*` imports neither the Prediction nor Outcome engine
+  (asserted by test). 16 migration/schema tests; full suite green.
 
 ## Responsibilities
 - Persist each recommendation with full context and later resolve its outcome.

@@ -101,9 +101,102 @@ CREATE INDEX IF NOT EXISTS idx_pred_symbol_created ON predictions(symbol, create
 """
 
 
+# --------------------------------------------------------------------------- #
+# Sprint 2 · Milestone 1 — Historical Memory schema (satellite tables + indexes).
+#
+# Historical Memory does NOT copy the predictions table. The `predictions` row remains the
+# single source of truth for everything it already stores; these tables hold only what
+# `predictions` deliberately does not — the reasoning narrative, vector embeddings, and
+# derived rollups — keyed back to a prediction by `prediction_id`. This "satellite" design
+# keeps `predictions` immutable and untouched, makes every change purely additive, and makes
+# rollback a clean table drop. See sprints/sprint-02-historical-memory-plan.md §4.
+# --------------------------------------------------------------------------- #
+
+# 0002 — memory_reasoning: the "why" behind one decision (1:1 with a prediction).
+# `predictions` stores the numeric confidence; this stores the human/structured explanation.
+_0002_CREATE_MEMORY_REASONING = """
+CREATE TABLE IF NOT EXISTS memory_reasoning (
+    prediction_id   TEXT PRIMARY KEY,
+    created_at      TEXT    NOT NULL,
+    confidence      REAL,                       -- mirror of decision-time confidence (indexable)
+    rationale       TEXT,                       -- free-text "why"
+    factors_json    TEXT,                       -- structured drivers: {factor: contribution/label}
+    rule_check_json TEXT,                       -- snapshot of the My-Rules checklist result
+    schema_version  INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY (prediction_id) REFERENCES predictions(prediction_id)
+);
+
+-- "search by confidence" without scanning the reasoning JSON.
+CREATE INDEX IF NOT EXISTS idx_mem_reasoning_confidence ON memory_reasoning(confidence);
+"""
+
+# 0003 — memory_embeddings: vector placeholder for the future Similarity Engine (Vol 14).
+# Nothing computes embeddings in Sprint 2; this owns the storage + contract. Multiple
+# `embedding_kind`s per prediction are allowed so a new embedding model can coexist with an
+# old one (no destructive recompute).
+_0003_CREATE_MEMORY_EMBEDDINGS = """
+CREATE TABLE IF NOT EXISTS memory_embeddings (
+    embedding_id   TEXT PRIMARY KEY,
+    prediction_id  TEXT    NOT NULL,
+    embedding_kind TEXT    NOT NULL,            -- e.g. 'context_v1'
+    model_name     TEXT,                        -- which embedding model produced the vector
+    dim            INTEGER,                      -- vector dimensionality
+    vector         BLOB,                         -- packed float32; NULL until populated
+    created_at     TEXT    NOT NULL,
+    schema_version INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY (prediction_id) REFERENCES predictions(prediction_id)
+);
+
+-- one vector per (prediction, kind); lookups by kind for retrieval.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mem_emb_once ON memory_embeddings(prediction_id, embedding_kind);
+CREATE INDEX IF NOT EXISTS idx_mem_emb_kind ON memory_embeddings(embedding_kind);
+"""
+
+# 0004 — memory_aggregates: derived performance rollups for Performance Analytics.
+# Fully derivable from `predictions` (droppable + rebuildable), so it is never a source of
+# truth. Keyed by model_version so a model swap never blends two models into one number.
+_0004_CREATE_MEMORY_AGGREGATES = """
+CREATE TABLE IF NOT EXISTS memory_aggregates (
+    dimension        TEXT    NOT NULL,          -- overall|symbol|sector|timeframe|regime|confidence_bucket|outcome
+    bucket           TEXT    NOT NULL,          -- the value within the dimension
+    model_version    TEXT    NOT NULL DEFAULT '', -- '' = across all models
+    n_resolved       INTEGER NOT NULL DEFAULT 0,
+    wins             INTEGER NOT NULL DEFAULT 0,
+    losses           INTEGER NOT NULL DEFAULT 0,
+    win_rate         REAL,
+    avg_r            REAL,
+    expectancy       REAL,
+    total_r          REAL,
+    profit_factor    REAL,
+    max_drawdown_r   REAL,
+    avg_holding_bars REAL,
+    updated_at       TEXT    NOT NULL,
+    PRIMARY KEY (dimension, bucket, model_version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mem_agg_dimension ON memory_aggregates(dimension);
+"""
+
+# 0005 — additive retrieval indexes on the existing predictions table. Indexes are pure
+# metadata: they add no column, change no row, and cannot alter a prediction's result — so
+# this is an *additive* migration, not a modification of the Sprint 1 schema. Existing
+# indexes (from 0001) are left untouched. These support Historical Memory's retrieval paths
+# (search by sector / regime / model version / timeframe).
+_0005_MEMORY_RETRIEVAL_INDEXES = """
+CREATE INDEX IF NOT EXISTS idx_pred_sector_status        ON predictions(sector, status);
+CREATE INDEX IF NOT EXISTS idx_pred_regime_status        ON predictions(market_regime, status);
+CREATE INDEX IF NOT EXISTS idx_pred_predmodel_status     ON predictions(prediction_model_version, status);
+CREATE INDEX IF NOT EXISTS idx_pred_timeframe_created    ON predictions(timeframe, created_at);
+"""
+
+
 #: All migrations, in ascending version order. **Append only.**
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=1, name="create_predictions", sql=_0001_CREATE_PREDICTIONS),
+    Migration(version=2, name="create_memory_reasoning", sql=_0002_CREATE_MEMORY_REASONING),
+    Migration(version=3, name="create_memory_embeddings", sql=_0003_CREATE_MEMORY_EMBEDDINGS),
+    Migration(version=4, name="create_memory_aggregates", sql=_0004_CREATE_MEMORY_AGGREGATES),
+    Migration(version=5, name="memory_retrieval_indexes", sql=_0005_MEMORY_RETRIEVAL_INDEXES),
 )
 
 

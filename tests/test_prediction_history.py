@@ -256,9 +256,13 @@ def test_migrations_are_idempotent(db_path):
     second.close()
 
 
-def test_first_run_applies_migration_one(db_path):
+def test_first_run_applies_migrations_in_order_from_one(db_path):
+    # A fresh DB applies every pending migration, in ascending order, starting at 1.
+    # (Robust to append-only additions — e.g. the Sprint 2 Historical Memory migrations.)
     conn = get_connection(db_path)
-    assert run_migrations(conn) == [1]
+    applied = run_migrations(conn)
+    assert applied[0] == 1
+    assert applied == sorted(m.version for m in MIGRATIONS)
     conn.close()
 
 

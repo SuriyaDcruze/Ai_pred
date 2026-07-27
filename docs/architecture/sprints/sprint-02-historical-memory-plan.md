@@ -5,7 +5,8 @@
 > Approval → Implementation.** Implementation begins only after this plan is approved, and
 > then one milestone at a time with a review gate after each.
 >
-> **Status:** 🟡 Design — awaiting approval. Nothing implemented.
+> **Status:** 🔨 Approved — implementing milestone by milestone.
+> **M1 (Database Extension): ✅ done — awaiting review.** M2–M6 pending.
 
 **Related:** Vol 13 (Historical Memory), Vol 14 (Similarity), Vol 15 (Learning), Vol 21
 (Database Design), Vol 18 (Forward Testing — the upstream producer),
@@ -500,7 +501,7 @@ The suggested M1–M6 structure is sound and adopted, with two refinements (just
 
 | M | Title | Scope | Deliverables | Depends on |
 |---|---|---|---|---|
-| **M1** | Database Extension | Migrations for T1–T3 (+T4 optional) and the additive `predictions` indexes; satellite dataclasses + enums; `schema_version` | migrations, models, migration tests (incl. populated Sprint-1 DB) | — |
+| **M1** ✅ | Database Extension | Migrations `0002`–`0005` (memory_reasoning/embeddings/aggregates + additive `predictions` indexes); satellite dataclasses + enums; `schema_version` | **done:** migrations, `app/memory/models.py`, 16 migration tests (incl. populated Sprint-1 upgrade). T4 `memory_news` **deferred** (optional). | — |
 | **M2** | Memory Store | `MemoryStore`: CRUD over satellite tables only; idempotent upserts keyed by `prediction_id`; thread-safe like `PredictionStore` | store + unit tests | M1 |
 | **M3** | Memory Builder | `MemoryBuilder`: enrich a resolved prediction → satellites; incremental **aggregate** maintenance; **backfill**; optional post-resolution hook | builder + integration tests | M2 |
 | **M4** | Retrieval Engine | Compose Memory Record; all §5.2 filters + pagination; aggregate reads; **similarity contract** (explicit "unavailable"); GPT context bundle shape | retrieval + tests | M3 |
