@@ -46,7 +46,7 @@ The individual volumes are authored on approval, in the priority agreed below.
 | 10 | [**News Intelligence**](10-news-intelligence.md) | Indian sources, event classification, impact | 🟡 basic sentiment |
 | 11 | [**Portfolio Intelligence**](11-portfolio-intelligence.md) | "₹X → allocation" — sizing, diversification, correlation | 🔴 not built |
 | 12 | [**Risk Engine**](12-risk-engine.md) | ATR stops, R-multiples, position sizing, portfolio risk | 🟢 built |
-| 13 | [**Historical Memory**](13-historical-memory.md) | Store every prediction+outcome; foundation for learning | 🟡 SQLite tracker |
+| 13 | [**Historical Memory**](13-historical-memory.md) | Store every prediction+outcome; foundation for learning | 🟢 **Sprint 2 COMPLETE** (`v0.2.0`) — store, builder, retrieval, API |
 | 14 | [**Similarity Engine**](14-similarity-engine.md) | "I've seen this setup before" (explainability) | 🟢 built |
 | 15 | [**Learning Engine**](15-learning-engine.md) | Meta-model + nightly champion/challenger retrain | 🟡 built, needs data |
 | 16 | [**User Profile**](16-user-profile.md) | Preferences, watchlists, risk appetite, auth identity | 🔴 not built |
@@ -75,10 +75,16 @@ The first module has been **built**, not just specified. Closure artifacts:
 - **[Architecture Decision Records](adr/)** — modular monolith · immutable engines ·
   forward-testing-before-production · single database · API/engine separation.
 
-## 📐 Next: Sprint 2 — Historical Memory Engine (design, awaiting approval)
-[Sprint 2 architecture & implementation plan](sprints/sprint-02-historical-memory-plan.md) —
-the permanent knowledge layer over completed predictions (satellite tables + composed Memory
-Record + retrieval). **Planning only; no implementation until approved.**
+## 🏁 Delivered: Sprint 2 — Historical Memory (`v0.2.0-historical-memory`, COMPLETE)
+The permanent knowledge layer over completed predictions is **built** (satellite tables +
+composed Memory Record + builder + retrieval + `/memory/*` API). Closure artifacts:
+- [Sprint 2 plan & status](sprints/sprint-02-historical-memory-plan.md) · [Sprint 2 report](../sprints/sprint-02-report.md)
+- [Historical Memory API reference](../api/historical-memory.md) · [Release notes](../releases/v0.2.0-historical-memory.md)
+- **[ADRs 0007–0011](adr/)** — satellite architecture · compose-on-read · retrieval-via-store ·
+  thin API · similarity-contract.
+
+**Next (awaiting approval):** Volume 14 — Similarity Engine (fills `memory_embeddings`,
+implements the algorithm behind the existing `/memory/similar` contract).
 
 ## ✅ Book status: all 28 volumes authored (v1.0) · Review complete → v1.1 proposed
 

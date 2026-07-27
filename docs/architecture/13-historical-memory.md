@@ -5,11 +5,38 @@ Store **every prediction and its real outcome, permanently** — the foundation 
 learning, forward-testing, similarity, failure analysis, and the "what changed since
 yesterday" experience. *"I have seen this market before."*
 
-## Status: 🟡 Building (Sprint 2). **M1 schema + M2 Store + M3 Builder + M4 Retrieval +
-M5 REST API delivered.** Satellite schema (migrations `0002`–`0005`), domain models, the
-**Memory Store**, the **Memory Builder**, the **Retrieval Engine**, and now the **`/memory/*`
-REST API** — a thin transport layer over retrieval + builder, mounted beside `/forward/*`.
-Only documentation (M6) remains. See `sprints/sprint-02-historical-memory-plan.md`.
+## Status: 🟢 Built (Sprint 2 COMPLETE, `v0.2.0-historical-memory`). Satellite schema
+(migrations `0002`–`0005`) + models + Memory Store + Memory Builder + Retrieval Engine +
+`/memory/*` REST API — all delivered and tested (110 Historical Memory tests; full suite 471
+passed). The engine is built but **populated only as the live sample accumulates** (Sprint 1
+tech debt), and **embeddings are storage-only** (NULL vectors until Vol 14). See
+`sprints/sprint-02-report.md` and `../api/historical-memory.md`.
+
+### Implemented vs Future work
+| Capability | State |
+|---|---|
+| Satellite database (reasoning / embeddings / aggregates) + additive indexes | ✅ implemented (M1) |
+| Memory Store — thread-safe, idempotent CRUD; typed errors | ✅ implemented (M2) |
+| Memory Builder — enrichment, aggregate system, backfill, optional hook | ✅ implemented (M3) |
+| Retrieval Engine — compose-on-read, filters, keyset pagination, aggregate reads | ✅ implemented (M4) |
+| Similarity **contract** (`unavailable`, no fake scores) | ✅ implemented (M4/M5) |
+| GPT context bundle (bounded, honest sample size) | ✅ implemented (M4/M5) |
+| REST API `/memory/*` (9 endpoints) | ✅ implemented (M5) |
+| Thread safety + idempotency (store + builder + backfill) | ✅ implemented |
+| **Embedding vectors** (computation) | 🔴 future — Vol 14 Similarity Engine |
+| **Similarity search algorithm** | 🔴 future — Vol 14 |
+| **`memory_news` (T4)** | 🔴 deferred (optional) |
+| **Memory populated live** (auto-record + monitor) | 🟡 future — Sprint 1 tech debt |
+| **Memory dashboard UI**, Postgres/pgvector, coverage gates | 🔴 future |
+
+### Known limitations
+- Memory is only as full as Forward Testing's live sample (near-empty until it accumulates);
+  every retrieval/aggregate path handles the empty state and always reports sample size.
+- Embeddings are storage-only (NULL); `/memory/similar` is deliberately "unavailable".
+- Retrieval filters in-app over `PredictionStore` reads (ADR 0009), not via the `predictions`
+  indexes — correct and fast at current volumes; indexes are forward-investment.
+- Aggregates recompute from source (not running counters) — simple, always correct, O(N)/refresh.
+- SQLite single-writer (WAL + lock mitigate); Postgres is the exit (Vol 21).
 
 ### As built — M1 (schema foundation)
 - **Satellite design, not a copy.** Historical Memory extends the Sprint 1 `predictions`

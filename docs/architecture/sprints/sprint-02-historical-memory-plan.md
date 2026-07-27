@@ -9,7 +9,13 @@ en one milestone at a time with a review gate after each.
 >
 > **Status:** 🔨 Approved — implementing milestone by milestone.
 > **M1: ✅ done. M2: ✅ done. M3: ✅ done.**
-> **M4: ✅ done.** **M5 (REST API): ✅ done — awaiting review.** M6 (docs) pending.
+> **M4: ✅ done. M5: ✅ done. M6 (docs): ✅ done.**
+> ## 🏁 Sprint 2 status: **COMPLETE** · recommended tag `v0.2.0-historical-memory`
+> All six milestones delivered, plan-gated, with `predictions` + the Prediction/Outcome
+> engines proven untouched throughout. 110 Historical Memory tests; full suite **471 passed**.
+> Closure: [sprint report](../../sprints/sprint-02-report.md) ·
+> [API reference](../../api/historical-memory.md) · [ADRs 0007–0011](../adr/) ·
+> [release notes](../../releases/v0.2.0-historical-memory.md).
 
 **Related:** Vol 13 (Historical Memory), Vol 14 (Similarity), Vol 15 (Learning), Vol 21
 (Database Design), Vol 18 (Forward Testing — the upstream producer),
@@ -509,7 +515,7 @@ The suggested M1–M6 structure is sound and adopted, with two refinements (just
 | **M3** ✅ | Memory Builder | `MemoryBuilder`: enrich resolved prediction → satellites; **aggregate** maintenance (recompute-from-source); **backfill** (idempotent); optional `on_resolved` hook | **done:** `builder.py` + `aggregates.py`; 20 integration tests (correctness, backfill idempotency, rollback, concurrency). Reads via `PredictionStore`, writes via `MemoryStore` only; no Sprint 1 files touched. | M2 |
 | **M4** ✅ | Retrieval Engine | Compose Memory Record; all §5.2 filters + keyset pagination; aggregate reads; **similarity contract** (explicit "unavailable"); GPT context bundle | **done:** `retrieval.py`; 24 integration tests (composition, filters, pagination, aggregates, similarity-unavailable, GPT bundle, empty/large, no-writes). Read-only; no Sprint 1 files touched. | M3 |
 | **M5** ✅ | REST API | `/memory/*` router mounted in `api/main.py`; validation; error handling; honest sample-size reporting | **done:** `app/api/memory.py` (9 endpoints); 23 API tests (every endpoint, validation, errors, OpenAPI). Only `main.py` touched (mount) — thin transport, no business logic, no engine imports. | M4 |
-| **M6** | Documentation | Vol 13 as-built, Vol 21 (new tables), API reference, sprint report, ADRs for Sprint 2 decisions | docs | M5 |
+| **M6** ✅ | Documentation & freeze | Vol 13 + Vol 21 as-built, API reference, sprint report, ADRs 0007–0011, release notes, version → 0.2.0 | **done:** Sprint 2 frozen COMPLETE. | M5 |
 
 **Refinements (justified):**
 1. **Aggregates live in M3, not a separate milestone** — they share the resolution trigger

@@ -24,11 +24,38 @@ Testing, and multi-user.
   - `0005` additive **retrieval indexes** on `predictions` (`(sector,status)`,
     `(market_regime,status)`, `(prediction_model_version,status)`, `(timeframe,created_at)`)
     — metadata only; existing indexes untouched.
-- **Design note (Sprint 2 M1):** Historical Memory uses **satellite tables** keyed on
-  `prediction_id`, never a copy of `predictions`. The composed *Memory Record* is a read
-  model (a later milestone). This keeps `predictions` immutable, every change additive, and
-  rollback a clean table drop. Migration tests verify a fresh DB, a populated Sprint-1 DB
-  upgrade (predictions byte-for-byte unchanged), idempotency, and rollback safety.
+- **Design note (Sprint 2):** Historical Memory uses **satellite tables** keyed on
+  `prediction_id`, never a copy of `predictions` (ADR 0007). The composed *Memory Record* is a
+  read model assembled by the Retrieval Engine (ADR 0008). This keeps `predictions` immutable,
+  every change additive, and rollback a clean table drop. Migration tests verify a fresh DB, a
+  populated Sprint-1 DB upgrade (predictions byte-for-byte unchanged), idempotency, and
+  rollback safety.
+
+### Relationships & migration sequence (as built, Sprint 2)
+```
+predictions (1) ──┬── (0..1) memory_reasoning        [PK prediction_id]
+                  └── (0..n) memory_embeddings        [UNIQUE (prediction_id, embedding_kind)]
+
+memory_aggregates ── derived from predictions (no FK; PK (dimension,bucket,model_version))
+```
+- FKs reference `predictions(prediction_id)` (`PRAGMA foreign_keys=ON`); satellites are only
+  written for predictions that exist. Aggregates have no FK — they are rebuildable rollups.
+
+| Version | Name | Effect |
+|---|---|---|
+| `0001` | create_predictions | Sprint 1 fact table + its indexes |
+| `0002` | create_memory_reasoning | + `memory_reasoning` (idx on `confidence`) |
+| `0003` | create_memory_embeddings | + `memory_embeddings` (unique kind idx) |
+| `0004` | create_memory_aggregates | + `memory_aggregates` (idx on `dimension`) |
+| `0005` | memory_retrieval_indexes | + additive indexes on `predictions` (no table change) |
+| `0006` | *(reserved)* | `memory_news` — deferred/optional |
+
+- **Version compatibility:** migrations are forward-only, append-only, idempotent, recorded in
+  `schema_migrations`. Older code that predates a satellite keeps working (the tables are
+  additive); readers use by-name column access + a per-record `schema_version`, so future
+  nullable columns never break existing readers. A model swap never blends performance — the
+  aggregate key includes `model_version`.
+- **Schema diagram:** see `sprints/sprint-02-historical-memory-plan.md` §4.5 and Volume 13.
 
 ## Target schema (Postgres)
 ```

@@ -16,6 +16,11 @@ Format: [Michael Nygard's template](https://cognitect.com/blog/2011/11/15/docume
 | [0004](0004-forward-testing-before-production.md) | Forward testing before production / real money | Accepted | 1 |
 | [0005](0005-single-prediction-history-db.md) | A single `prediction_history.db` | Accepted | 1 |
 | [0006](0006-rest-api-separation-from-engine-logic.md) | REST API separated from engine logic | Accepted | 1 |
+| [0007](0007-satellite-table-architecture.md) | Satellite-table architecture for Historical Memory | Accepted | 2 |
+| [0008](0008-memory-record-composed-on-read.md) | The Memory Record is composed on read | Accepted | 2 |
+| [0009](0009-retrieval-reads-via-predictionstore.md) | Retrieval reads predictions only via PredictionStore | Accepted | 2 |
+| [0010](0010-memory-api-thin-transport.md) | The `/memory/*` API is thin transport only | Accepted | 2 |
+| [0011](0011-similarity-contract-now-algorithm-later.md) | Similarity: contract now, algorithm later | Accepted | 2 |
 
 Related: the full Architecture Book lives in [../](../) (Volumes 00–28) and the
 Architecture Review in [../ARCHITECTURE-REVIEW-v1.md](../ARCHITECTURE-REVIEW-v1.md).
