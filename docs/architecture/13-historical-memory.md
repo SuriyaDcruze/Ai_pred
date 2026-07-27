@@ -5,11 +5,12 @@ Store **every prediction and its real outcome, permanently** — the foundation 
 learning, forward-testing, similarity, failure analysis, and the "what changed since
 yesterday" experience. *"I have seen this market before."*
 
-## Status: 🟡 Building (Sprint 2). **M1 schema + M2 Memory Store delivered.** The satellite
-schema (`memory_reasoning`, `memory_embeddings`, `memory_aggregates`) + additive retrieval
-indexes (migrations `0002`–`0005`), the satellite domain models, and now the **Memory Store**
-— thread-safe, idempotent CRUD over the satellite tables. Builder, Retrieval Engine, and REST
-API are later milestones. See `sprints/sprint-02-historical-memory-plan.md`.
+## Status: 🟡 Building (Sprint 2). **M1 schema + M2 Memory Store + M3 Memory Builder
+delivered.** The satellite schema (migrations `0002`–`0005`), domain models, the **Memory
+Store** (thread-safe idempotent CRUD), and now the **Memory Builder** — enriches completed
+predictions into reasoning + embedding-placeholder rows, computes derived aggregates, and
+backfills. Retrieval Engine and REST API are later milestones. See
+`sprints/sprint-02-historical-memory-plan.md`.
 
 ### As built — M1 (schema foundation)
 - **Satellite design, not a copy.** Historical Memory extends the Sprint 1 `predictions`
@@ -43,6 +44,28 @@ API are later milestones. See `sprints/sprint-02-historical-memory-plan.md`.
   create/update/delete/rollback/constraint violations — identities only, never content.
 - **Writes only satellite tables** — never `predictions` (asserted by test). 27 unit tests
   incl. concurrent writes; no engine imports (asserted).
+
+### As built — M3 (Memory Builder)
+- `app/memory/builder.py` — **`MemoryBuilder`**: reads a completed prediction via
+  `PredictionStore` (read-only), enriches its satellites via `MemoryStore` (write-only),
+  **never** touches `predictions` or runs a model. `build(prediction_id)` (skips open/missing
+  → `BuildStatus`), `backfill(limit)` (enrich all resolved-but-unbuilt, idempotent), an
+  optional `on_resolved()` hook (off by default — backfill is primary), `refresh_aggregates()`.
+- **Enrichment** = reshaping stored facts, not creating them: a deterministic reasoning row
+  (rationale + factors + rule-check + confidence mirror; build metadata — builder version +
+  provenance — rides in a reserved `_builder` key, build timestamp = row `created_at`,
+  schema via `schema_version`), plus an **embedding placeholder** created only when absent so
+  a future Similarity vector is never nulled. Deterministic → duplicate builds converge.
+- **Aggregates** (`app/memory/aggregates.py`, pure functions): win rate, avg R, expectancy,
+  profit factor, total R, max drawdown, avg holding — by overall/symbol/sector/regime/
+  timeframe/confidence-bucket, **and** split per prediction-model version (so a model swap
+  never blends). Maintained by **recompute-from-source** (derived + rebuildable, always
+  correct) rather than fragile running counters.
+- **Resilience:** backfill continues past a single enrichment failure (logged + counted),
+  never corrupting prior memory; every store write is transactional. Structured logging of
+  build start/complete/skip/aggregate-refresh/backfill-summary — identifiers only, no
+  content. 20 integration tests (build, skip, aggregate correctness vs known data, backfill
+  idempotency, rollback resilience, concurrency, `predictions` unchanged, no engine imports).
 
 ## Responsibilities
 - Persist each recommendation with full context and later resolve its outcome.
