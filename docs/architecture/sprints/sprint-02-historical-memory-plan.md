@@ -2,13 +2,14 @@
 
 > **Planning only. No code, no SQL, no endpoints are written in this document.**
 > Process (identical to Sprint 1): **Architecture → Sprint Plan → Milestones → Review →
-> Approval → Implementation.** Implementation begins only after this plan is approved, and
+> Approval → Implementation.** Implementation begins only a
+fter this plan is approved, and
 > th
 en one milestone at a time with a review gate after each.
 >
 > **Status:** 🔨 Approved — implementing milestone by milestone.
-> **M1 (Database Extension): ✅ done. M2 (Memory Store): ✅ done.**
-> **M3 (Memory Builder): ✅ done — awaiting review.** M4–M6 pending.
+> **M1: ✅ done. M2: ✅ done. M3: ✅ done.**
+> **M4 (Retrieval Engine): ✅ done — awaiting review.** M5–M6 pending.
 
 **Related:** Vol 13 (Historical Memory), Vol 14 (Similarity), Vol 15 (Learning), Vol 21
 (Database Design), Vol 18 (Forward Testing — the upstream producer),
@@ -506,7 +507,7 @@ The suggested M1–M6 structure is sound and adopted, with two refinements (just
 | **M1** ✅ | Database Extension | Migrations `0002`–`0005` (memory_reasoning/embeddings/aggregates + additive `predictions` indexes); satellite dataclasses + enums; `schema_version` | **done:** migrations, `app/memory/models.py`, 16 migration tests (incl. populated Sprint-1 upgrade). T4 `memory_news` **deferred** (optional). | — |
 | **M2** ✅ | Memory Store | `MemoryStore`: CRUD over satellite tables only; idempotent upserts; thread-safe like `PredictionStore` | **done:** `app/memory/store.py` + `errors.py`; 27 unit tests (CRUD, upsert, concurrency, rollback, FK, schema). No Sprint 1 files touched. | M1 |
 | **M3** ✅ | Memory Builder | `MemoryBuilder`: enrich resolved prediction → satellites; **aggregate** maintenance (recompute-from-source); **backfill** (idempotent); optional `on_resolved` hook | **done:** `builder.py` + `aggregates.py`; 20 integration tests (correctness, backfill idempotency, rollback, concurrency). Reads via `PredictionStore`, writes via `MemoryStore` only; no Sprint 1 files touched. | M2 |
-| **M4** | Retrieval Engine | Compose Memory Record; all §5.2 filters + pagination; aggregate reads; **similarity contract** (explicit "unavailable"); GPT context bundle shape | retrieval + tests | M3 |
+| **M4** ✅ | Retrieval Engine | Compose Memory Record; all §5.2 filters + keyset pagination; aggregate reads; **similarity contract** (explicit "unavailable"); GPT context bundle | **done:** `retrieval.py`; 24 integration tests (composition, filters, pagination, aggregates, similarity-unavailable, GPT bundle, empty/large, no-writes). Read-only; no Sprint 1 files touched. | M3 |
 | **M5** | REST API | `/memory/*` router mounted in `api/main.py`; validation; error handling; honest sample-size reporting | router + API tests | M4 |
 | **M6** | Documentation | Vol 13 as-built, Vol 21 (new tables), API reference, sprint report, ADRs for Sprint 2 decisions | docs | M5 |
 

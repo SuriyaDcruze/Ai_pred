@@ -28,3 +28,8 @@ class MemoryForeignKeyError(MemoryStoreError):
 
 class MemorySchemaError(MemoryStoreError):
     """A record carried a ``schema_version`` this build does not understand."""
+
+
+class MemoryQueryError(MemoryStoreError):
+    """A retrieval request was malformed — an invalid filter (e.g. ``confidence_min`` >
+    ``confidence_max``, an unknown outcome status) or a bad pagination cursor/limit."""

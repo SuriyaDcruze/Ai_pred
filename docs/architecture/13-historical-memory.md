@@ -5,12 +5,12 @@ Store **every prediction and its real outcome, permanently** — the foundation 
 learning, forward-testing, similarity, failure analysis, and the "what changed since
 yesterday" experience. *"I have seen this market before."*
 
-## Status: 🟡 Building (Sprint 2). **M1 schema + M2 Memory Store + M3 Memory Builder
-delivered.** The satellite schema (migrations `0002`–`0005`), domain models, the **Memory
-Store** (thread-safe idempotent CRUD), and now the **Memory Builder** — enriches completed
-predictions into reasoning + embedding-placeholder rows, computes derived aggregates, and
-backfills. Retrieval Engine and REST API are later milestones. See
-`sprints/sprint-02-historical-memory-plan.md`.
+## Status: 🟡 Building (Sprint 2). **M1 schema + M2 Store + M3 Builder + M4 Retrieval
+Engine delivered.** Satellite schema (migrations `0002`–`0005`), domain models, the **Memory
+Store** (idempotent CRUD), the **Memory Builder** (enrich + aggregates + backfill), and now
+the **Retrieval Engine** — composes Memory Records on read, with filtered search, keyset
+pagination, aggregate reads, the similarity contract, and a GPT context bundle. REST API is
+the last milestone. See `sprints/sprint-02-historical-memory-plan.md`.
 
 ### As built — M1 (schema foundation)
 - **Satellite design, not a copy.** Historical Memory extends the Sprint 1 `predictions`
@@ -66,6 +66,26 @@ backfills. Retrieval Engine and REST API are later milestones. See
   build start/complete/skip/aggregate-refresh/backfill-summary — identifiers only, no
   content. 20 integration tests (build, skip, aggregate correctness vs known data, backfill
   idempotency, rollback resilience, concurrency, `predictions` unchanged, no engine imports).
+
+### As built — M4 (Retrieval Engine)
+- `app/memory/retrieval.py` — **`RetrievalEngine`**: the **read-only** layer. Composes a
+  `MemoryRecord` **on read** from the prediction (via `PredictionStore`) + its satellites
+  (via `MemoryStore`); a missing satellite yields `null`/defaults, never an error. Performs
+  no writes and issues no direct SQL; imports neither engine (asserted).
+- **Search** (`MemoryFilter`): by symbol, timeframe, regime, sector, prediction-model /
+  outcome-model / feature version, confidence range, outcome status (WIN/LOSS aliases), and
+  date range — all AND-composed. **Keyset pagination** ordered `(created_at, prediction_id)`
+  desc — deterministic and reproducible; malformed filters/cursor/limit raise
+  `MemoryQueryError`.
+- **Aggregates:** read-only pass-through to `MemoryStore` (never computes here).
+- **Similarity contract:** `similar()` returns an explicit *"Similarity Engine unavailable"*
+  with **no** fabricated scores (validates the prediction exists first) — the algorithm is
+  Vol 14.
+- **GPT context bundle:** bounded, deterministic — top-k matching records + the relevant
+  aggregate + **sample size** + an honest small-sample note, so the assistant can't
+  over-claim. 24 integration tests (composition, missing satellites, every filter,
+  pagination completeness, aggregate reads, similarity-unavailable, GPT bundle, empty + large
+  datasets, `predictions` unchanged / no writes).
 
 ## Responsibilities
 - Persist each recommendation with full context and later resolve its outcome.
