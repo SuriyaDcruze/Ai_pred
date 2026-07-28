@@ -1,5 +1,9 @@
 # Sprint 1 — Forward Testing Engine · Implementation Plan & Status
 
+> **Sprint sequence:** **Sprint 1 (Forward Testing, `v0.1.0`)** → [Sprint 2 (Historical
+> Memory, `v0.2.0`)](sprint-02-historical-memory-plan.md) → [Sprint 3 (Similarity
+> Engine)](sprint-03-similarity-plan.md).
+
 > Per the mandated process: **plan → files → DB → APIs → wait for approval → implement**,
 > milestone by milestone with a review gate after each.
 

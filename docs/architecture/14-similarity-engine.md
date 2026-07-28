@@ -9,7 +9,8 @@ report how trades actually fared in them. Pure **explainability**, honestly labe
 below). **(2) Sprint 3 build over Historical Memory** — a new `app/similarity/` package that
 will fill the `memory_embeddings` placeholder and answer the `/memory/similar` contract.
 **M1 (Feature Vector Builder) delivered**; embeddings, similarity, and ranking are later
-milestones. See `sprints/sprint-02-report.md` (upstream) and the M1 section below.
+milestones. See the **[Sprint 3 plan](sprints/sprint-03-similarity-plan.md)** for the full
+milestone breakdown, and the M1 section below.
 
 ### As built — Sprint 3 · M1 (Feature Vector Builder)
 `app/similarity/{models,feature_vector}.py` — a **pure, deterministic** transform from a

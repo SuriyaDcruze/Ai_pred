@@ -83,8 +83,9 @@ composed Memory Record + builder + retrieval + `/memory/*` API). Closure artifac
 - **[ADRs 0007–0011](adr/)** — satellite architecture · compose-on-read · retrieval-via-store ·
   thin API · similarity-contract.
 
-**Next (awaiting approval):** Volume 14 — Similarity Engine (fills `memory_embeddings`,
-implements the algorithm behind the existing `/memory/similar` contract).
+## 🔨 In progress: Sprint 3 — Similarity Engine (Volume 14)
+[Sprint 3 plan](sprints/sprint-03-similarity-plan.md) — fills `memory_embeddings` and lights
+up the `/memory/similar` contract. **M1 (Feature Vector Builder) done**; M2–M6 gated.
 
 ## ✅ Book status: all 28 volumes authored (v1.0) · Review complete → v1.1 proposed
 

@@ -1,5 +1,9 @@
 # Sprint 1 · Milestone 1 — Schema + Prediction Models + Migration ✅ IMPLEMENTED
 
+> **Sprint sequence:** **Sprint 1 (Forward Testing, `v0.1.0`)** → [Sprint 2 (Historical
+> Memory, `v0.2.0`)](sprint-02-historical-memory-plan.md) → [Sprint 3 (Similarity
+> Engine)](sprint-03-similarity-plan.md).
+
 > **Status: complete.** 33 M1 tests pass; full suite 194 passed. Prediction/Outcome
 > engines untouched and verified unaffected. Awaiting review before Milestone 2.
 > *(Scope note: `versioning.py` was drafted then removed — it was not in the approved M1

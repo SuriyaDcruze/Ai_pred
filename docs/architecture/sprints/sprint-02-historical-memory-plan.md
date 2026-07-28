@@ -17,6 +17,10 @@ en one milestone at a time with a review gate after each.
 > [API reference](../../api/historical-memory.md) · [ADRs 0007–0011](../adr/) ·
 > [release notes](../../releases/v0.2.0-historical-memory.md).
 
+> **Sprint sequence:** [Sprint 1 (Forward Testing, `v0.1.0`)](sprint-01-forward-testing-plan.md)
+> → **Sprint 2 (Historical Memory, `v0.2.0`)** → [Sprint 3 (Similarity
+> Engine)](sprint-03-similarity-plan.md).
+
 **Related:** Vol 13 (Historical Memory), Vol 14 (Similarity), Vol 15 (Learning), Vol 21
 (Database Design), Vol 18 (Forward Testing — the upstream producer),
 [ADRs](../adr/) 0001/0002/0003/0005/0006, and the
