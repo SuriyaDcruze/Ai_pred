@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import time
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -217,22 +218,109 @@ class SearchPage:
 
 @dataclass
 class SimilarityResult:
-    """The Similarity contract's response. Until the Similarity Engine lands, this is always
-    an explicit *unavailable* — never a fabricated score."""
+    """The Similarity contract's response.
+
+    When no Similarity Engine is injected (the default), this is an explicit *unavailable* —
+    never a fabricated score. When an engine is injected (Sprint 3 · M4), ``available`` is
+    ``True`` and the extra fields carry the neighbours and honest aggregate. The extra fields
+    are optional and default empty/``None``, so existing callers that only read
+    ``available``/``reason``/``results`` keep working unchanged (backward compatible)."""
 
     available: bool
     reason: str
-    results: list[dict[str, Any]] = field(default_factory=list)
+    results: list[dict[str, Any]] = field(default_factory=list)   # neighbours (no raw vectors)
+    sample_size: int | None = None
+    summary: dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = None
+
+
+def _unavailable() -> SimilarityResult:
+    """The documented 'Similarity Engine unavailable' response (no fabricated scores)."""
+    return SimilarityResult(available=False, reason="Similarity Engine unavailable", results=[])
+
+
+def _to_similarity_result(search_result: Any) -> SimilarityResult:
+    """Map a Sprint 3 ``SimilaritySearchResult`` into the retrieval contract (duck-typed).
+
+    Exposes neighbours + scores + honest aggregate + versions; **never** raw embedding vectors
+    or internal feature representations.
+    """
+    neighbours = [
+        {
+            "prediction_id": n.prediction_id,
+            "similarity_score": n.similarity_score,
+            "confidence": n.confidence,
+            "outcome": n.outcome,
+            "status": n.status,
+            "realised_r": n.realised_r,
+            "holding_bars": n.holding_bars,
+            "symbol": n.symbol,
+            "sector": n.sector,
+            "market_regime": n.market_regime,
+            "market_phase": n.market_phase,
+            "timeframe": n.timeframe,
+            "embedding_version": n.embedding_version,
+            "feature_version": n.feature_version,
+        }
+        for n in search_result.neighbours
+    ]
+    s = search_result.summary
+    return SimilarityResult(
+        available=True,
+        reason="",
+        results=neighbours,
+        sample_size=s.sample_size,
+        summary={
+            "sample_size": s.sample_size,
+            "resolved": s.resolved,
+            "win_rate": s.win_rate,
+            "avg_realised_r": s.avg_realised_r,
+            "outcome_distribution": s.outcome_distribution,
+        },
+        metadata={
+            "similarity_version": search_result.similarity_version,
+            "metric": search_result.metric,
+            "feature_version": search_result.feature_version,
+            "candidate_count": search_result.candidate_count,
+            "returned": search_result.returned,
+            "cap_applied": search_result.cap_applied,
+        },
+    )
 
 
 # --------------------------------------------------------------------------- engine
 class RetrievalEngine:
     """Read-only composition, search, aggregate reads, and the similarity contract."""
 
-    def __init__(self, prediction_store: PredictionStore, memory_store: MemoryStore):
-        """Wire the engine to its two read-only stores."""
+    def __init__(
+        self,
+        prediction_store: PredictionStore,
+        memory_store: MemoryStore,
+        *,
+        similarity_engine: Any = None,
+    ):
+        """Wire the engine to its two read-only stores.
+
+        Args:
+            prediction_store, memory_store: the read-only sources.
+            similarity_engine: an **optional** Similarity Search Engine (Sprint 3). When
+                absent (the default), the similarity contract stays *unavailable* and all
+                existing behaviour is unchanged. Duck-typed to avoid importing
+                ``app.similarity`` here (which would create an import cycle) — any object
+                exposing ``search_by_prediction(prediction_id, *, k)`` and ``search(embedding,
+                *, ...)`` works.
+        """
         self.predictions = prediction_store
         self.memory = memory_store
+        self.similarity_engine = similarity_engine
+
+    def set_similarity_engine(self, engine: Any) -> None:
+        """Inject (or clear with ``None``) the Similarity Search Engine after construction.
+
+        Dependency inversion: the engine depends on this ``RetrievalEngine``, so it is created
+        second and injected here — breaking the construction cycle without an import cycle.
+        """
+        self.similarity_engine = engine
 
     # --------------------------------------------------------------- compose
     def _relevant_aggregate(self, record: PredictionRecord) -> MemoryAggregate | None:
@@ -370,18 +458,60 @@ class RetrievalEngine:
 
     # ------------------------------------------------------------ similarity
     def similar(self, prediction_id: str, *, k: int = 5) -> SimilarityResult:
-        """The Similarity contract — always **unavailable** until the Similarity Engine (Vol 14).
+        """The Similarity contract — neighbours of a prediction, or *unavailable*.
 
-        Validates the prediction exists, then returns an explicit unavailable result with
-        **no** fabricated scores.
+        Validates the prediction exists, then:
+        * **no engine injected** → the documented *"Similarity Engine unavailable"* response
+          (unchanged from Sprint 2 — **no** fabricated scores); or
+        * **engine injected** → delegates to it (reusing the Sprint 3 search) and returns the
+          neighbours + honest aggregate.
 
         Raises:
             MemoryNotFoundError: no such prediction.
+            SimilarityError subclasses (e.g. missing embedding, unsupported version): from the
+                engine when enabled — surfaced as typed exceptions. Unexpected engine failures
+                degrade gracefully to *unavailable* rather than propagating.
         """
         if self.predictions.get(prediction_id) is None:
             raise MemoryNotFoundError(f"unknown prediction {prediction_id!r}")
-        logger.info("memory similarity requested for %s — unavailable (no Similarity Engine)", prediction_id)
-        return SimilarityResult(available=False, reason="Similarity Engine unavailable", results=[])
+        engine = self.similarity_engine
+        if engine is None:
+            logger.info("memory similarity for %s — unavailable (no Similarity Engine)", prediction_id)
+            return _unavailable()
+        return self._run_similarity(lambda: engine.search_by_prediction(prediction_id, k=k), prediction_id)
+
+    def similar_by_embedding(self, embedding: Any, *, k: int = 5, **kwargs: Any) -> SimilarityResult:
+        """Neighbours of an arbitrary query embedding (reuses the injected engine's search).
+
+        Returns *unavailable* when no engine is injected. ``embedding`` is duck-typed (an
+        ``app.similarity`` ``Embedding``); ``kwargs`` (filter/min_similarity/candidate_cap) are
+        forwarded to the engine.
+        """
+        engine = self.similarity_engine
+        if engine is None:
+            return _unavailable()
+        return self._run_similarity(lambda: engine.search(embedding, k=k, **kwargs), None)
+
+    def _run_similarity(self, call: Any, prediction_id: str | None) -> SimilarityResult:
+        """Execute a similarity call, mapping the result and handling failures gracefully."""
+        # Lazy import (call-time, never module load) so retrieval.py has no static dependency
+        # on app.similarity — avoiding the RetrievalEngine <-> SimilaritySearchEngine cycle.
+        from app.similarity.models import SimilarityError
+
+        started = time.perf_counter()
+        try:
+            search_result = call()
+        except SimilarityError:
+            raise                                    # typed → surface to the caller
+        except Exception as exc:  # noqa: BLE001 - any unexpected failure degrades gracefully
+            logger.warning("similarity engine failed, falling back to unavailable: %s", exc)
+            return _unavailable()
+        result = _to_similarity_result(search_result)
+        logger.info(
+            "memory similarity for %s — %d neighbour(s) in %.1fms",
+            prediction_id, len(result.results), (time.perf_counter() - started) * 1000,
+        )
+        return result
 
     # ---------------------------------------------------------- gpt context
     def gpt_context(

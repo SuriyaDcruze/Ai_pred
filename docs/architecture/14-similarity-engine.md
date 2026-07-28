@@ -8,10 +8,37 @@ report how trades actually fared in them. Pure **explainability**, honestly labe
 (kNN over intelligence features, folded into `/intelligence`; **context only, no edge** —
 below). **(2) Sprint 3 build over Historical Memory** — a new `app/similarity/` package that
 will fill the `memory_embeddings` placeholder and answer the `/memory/similar` contract.
-**M1 (Feature Vectors) + M2 (Embeddings) + M3 (Similarity Search) delivered**; retrieval
-integration and API are later milestones. See the **[Sprint 3
-plan](sprints/sprint-03-similarity-plan.md)** for the full milestone breakdown, and the
-M1/M2/M3 sections below.
+**M1 (Feature Vectors) + M2 (Embeddings) + M3 (Similarity Search) + M4 (Retrieval
+integration) delivered**; the REST API + freeze are the remaining milestones. See the
+**[Sprint 3 plan](sprints/sprint-03-similarity-plan.md)** for the full breakdown, and the
+M1–M4 sections below.
+
+### As built — Sprint 3 · M4 (Retrieval integration)
+The similarity contract is now activated by **injecting** the M3 engine into
+`RetrievalEngine` — the one deliberate, **additive** touch of a Sprint 2 file
+(`app/memory/retrieval.py`); all existing retrieval behaviour is unchanged (backward
+compatible — Sprint 2's 47 retrieval/API tests still pass).
+- **Dependency injection (setter), no import cycle.** `RetrievalEngine` gains an optional
+  `similarity_engine` (constructor kwarg + `set_similarity_engine()`). Because the engine
+  depends on the retrieval engine, it is created second and injected — breaking the
+  construction cycle. `retrieval.py` imports **nothing** from `app.similarity` at module load
+  (duck-typed engine + a lazy import inside the method), so there is no import cycle (asserted
+  by a top-level-imports test).
+- **Activation + graceful fallback.** `similar(prediction_id)`: no engine → the documented
+  *"Similarity Engine unavailable"* (unchanged); engine present → delegates to
+  `search_by_prediction` and returns the mapped result. `similar_by_embedding(embedding)`
+  delegates to `search`. Typed errors (`MissingEmbeddingError`, unsupported version, malformed
+  request) surface; an **unexpected** engine failure degrades gracefully to *unavailable*
+  rather than propagating.
+- **Response contract** (`SimilarityResult`, extended additively): `available`, `reason`,
+  `results` (neighbours), `sample_size`, `summary` (win rate / avg R / outcome distribution),
+  `metadata` (similarity + feature version, metric, candidate count, cap flag). **No raw
+  vectors** or internal feature representations. Read-only + thread-safe; structured logging of
+  enabled/disabled, neighbour count, timing, fallback — never embeddings.
+- **Not in M4:** the running app is **not** wired to a similarity engine (so the live
+  `/memory/similar` still returns *unavailable*) — app wiring + the richer API response are
+  M5. 17 integration tests (enabled/disabled, fallback, DI, empty corpus, missing embedding,
+  unknown prediction, determinism, concurrency, no-writes, backward compatibility).
 
 ### As built — Sprint 3 · M3 (Similarity Search Engine)
 `app/similarity/search.py` — **read-only** cosine k-NN over the embeddings stored in
