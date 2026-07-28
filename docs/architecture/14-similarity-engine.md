@@ -8,9 +8,35 @@ report how trades actually fared in them. Pure **explainability**, honestly labe
 (kNN over intelligence features, folded into `/intelligence`; **context only, no edge** —
 below). **(2) Sprint 3 build over Historical Memory** — a new `app/similarity/` package that
 will fill the `memory_embeddings` placeholder and answer the `/memory/similar` contract.
-**M1 (Feature Vector Builder) delivered**; embeddings, similarity, and ranking are later
-milestones. See the **[Sprint 3 plan](sprints/sprint-03-similarity-plan.md)** for the full
-milestone breakdown, and the M1 section below.
+**M1 (Feature Vector Builder) + M2 (Embedding Generator) delivered**; similarity search,
+retrieval integration, and API are later milestones. See the **[Sprint 3
+plan](sprints/sprint-03-similarity-plan.md)** for the full milestone breakdown, and the
+M1/M2 sections below.
+
+### As built — Sprint 3 · M2 (Embedding Generator)
+`app/similarity/embedding.py` — a **deterministic** transform of a feature vector into an
+embedding, stored in `memory_embeddings` via `MemoryStore` (never direct SQL). It performs
+**no** similarity search, ranking, API, or training, and modifies no Historical Memory facts
+beyond its own embedding rows; imports neither engine (asserted).
+- **Strategy `sim-emb-1`:** the **L2-normalised** `sim-fv-1` feature vector (dim 100) — every
+  embedding on the unit sphere (well-behaved for later cosine), a zero vector staying zero.
+  Fully deterministic: identical feature vector → identical embedding, bit-for-bit; no model
+  artifact, no randomness.
+- **Metadata:** `embedding_version` (`sim-emb-1`), `feature_version` (`sim-fv-1`),
+  `schema_version`, `dimension` (100), `embedding_kind` (`context_v1`), `created_at`. Since
+  the frozen `memory_embeddings` table has no version columns, the two versions are packed
+  into the row's `model_name` (`"sim-emb-1/sim-fv-1"`); `dimension`→`dim`. Filling
+  `embedding_kind="context_v1"` populates the **NULL placeholder** the Memory Builder created.
+- **Operations:** `generate_from_feature_vector`, `generate_embedding` (from a Memory Record),
+  `store_embedding`, `build_and_store` (idempotent skip), `rebuild_embedding` (overwrite), and
+  `backfill_embeddings` (enriched records only; idempotent; one failure never aborts the
+  batch). Thread-safe via `MemoryStore`'s lock; idempotent by `(prediction_id, embedding_kind)`
+  so concurrent/duplicate generation never creates duplicate rows.
+- **Typed errors:** `UnsupportedVersionError` / `DimensionMismatchError` /
+  `InvalidFeatureVectorError`. Structured logging of embedding version + dimension + counts —
+  **never vector values**. 21 tests (determinism, L2 unit-length, storage, rebuild, backfill
+  idempotency, concurrency, invalid/mismatched vectors, rollback, writes-only-embeddings,
+  no-engine-imports).
 
 ### As built — Sprint 3 · M1 (Feature Vector Builder)
 `app/similarity/{models,feature_vector}.py` — a **pure, deterministic** transform from a

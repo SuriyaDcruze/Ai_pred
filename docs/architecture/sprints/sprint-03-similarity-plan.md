@@ -5,8 +5,8 @@
 > Process (identical to Sprints 1–2): **Architecture → Sprint Plan → Milestones → Review →
 > Approval → Implementation.** One milestone at a time with a review gate after each.
 >
-> **Status:** 🔨 In progress. **M1 (Feature Vector Builder): ✅ done — awaiting review.**
-> M2–M6 pending.
+> **Status:** 🔨 In progress. **M1 (Feature Vector Builder): ✅ done. M2 (Embedding
+> Generator): ✅ done — awaiting review.** M3–M6 pending.
 >
 > **Note on process:** Sprint 3 began at an M1 implementation spec (no separate plan was
 > requested first). This document is written **after** M1 to give the sprint the same
@@ -113,7 +113,7 @@ integration → API → documentation.
 | M | Title | Scope | Deliverables | State |
 |---|---|---|---|---|
 | **M1** | Feature Vector Builder | Memory Record → deterministic versioned vector (`sim-fv-1`, dim 100); encoders; typed errors | `app/similarity/{models,feature_vector}.py`; 19 tests | ✅ **done** |
-| **M2** | Embedding Generator | Deterministic transform of the feature vector → `memory_embeddings` (via `MemoryStore`); idempotent backfill; **no training** | `app/similarity/embedding.py`; tests | ⏳ pending |
+| **M2** ✅ | Embedding Generator | Deterministic **L2-normalised** embedding → `memory_embeddings` (via `MemoryStore`); idempotent backfill; **no training** | **done:** `app/similarity/embedding.py`; 21 tests. `sim-emb-1`, dim 100; versions packed in `model_name` (frozen table). No Sprint 1/2 files touched. | ✅ **done** |
 | **M3** | Similarity Search | Distance metric (cosine) + k-NN; **filter-then-brute-force** over a pre-filtered candidate set; honest neighbour stats (win rate, avg R, n); logged caps | `app/similarity/search.py`; tests | ⏳ pending |
 | **M4** | Retrieval integration | Light up the `/memory/similar` contract by injecting an **optional** similarity engine into retrieval (additive hook); still returns "unavailable" when disabled | small additive wiring; tests | ⏳ pending |
 | **M5** | API | Expose similarity results (via the existing `/memory/similar` + any `/similarity/*` needed); validation, honest sample size | `app/api` additive; API tests | ⏳ pending |
@@ -171,4 +171,8 @@ integration → API → documentation.
   fixed one-hot vocabularies + stable SHA-1 hashing + clamped min-max scaling + present flags;
   typed errors; 19 tests; full suite **490 passed**. Sprint 1 & 2 untouched. As-built detail in
   [Vol 14](../14-similarity-engine.md).
-- M2–M6 — pending approval, one gate at a time.
+- **M2 (Embedding Generator) — ✅ done**: `sim-emb-1` = L2-normalised `sim-fv-1` vector
+  (dim 100), stored in `memory_embeddings` (versions packed in `model_name`; fills the
+  Memory-Builder placeholder). Deterministic, idempotent, thread-safe; 21 tests; full suite
+  green. Sprint 1 & 2 untouched.
+- M3–M6 — pending approval, one gate at a time.

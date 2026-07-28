@@ -6,13 +6,22 @@ consumes Historical Memory (Sprint 2) and fills the `memory_embeddings` placehol
 performs **no** prediction and modifies neither Historical Memory nor the Prediction/Outcome
 engines.
 
-**Current state (Milestone 1):** only the **Feature Vector Builder** — a pure, deterministic
-transformation from a Memory Record to a versioned numerical feature vector. It does *not*
-generate embeddings, compare vectors, or rank similarity; those are later milestones.
+**Current state (Milestones 1–2):** the **Feature Vector Builder** (Memory Record → versioned
+numerical vector) and the **Embedding Generator** — a deterministic L2-normalised embedding of
+that vector, stored in ``memory_embeddings``. It does *not* compare vectors, rank similarity,
+or expose an API; those are later milestones.
 """
 
 from __future__ import annotations
 
+from app.similarity.embedding import (
+    EMBEDDING_KIND,
+    EMBEDDING_SCHEMA_VERSION,
+    EMBEDDING_VERSION,
+    EmbeddingBackfillSummary,
+    EmbeddingGenerator,
+    l2_normalize,
+)
 from app.similarity.feature_vector import (
     FEATURE_VERSION,
     SCHEMA_VERSION,
@@ -21,7 +30,10 @@ from app.similarity.feature_vector import (
     feature_layout,
 )
 from app.similarity.models import (
+    DimensionMismatchError,
+    Embedding,
     FeatureVector,
+    InvalidFeatureVectorError,
     InvalidMemoryRecordError,
     MissingFieldError,
     SimilarityError,
@@ -29,14 +41,26 @@ from app.similarity.models import (
 )
 
 __all__ = [
+    # feature vectors (M1)
     "FeatureVectorBuilder",
     "FeatureVector",
     "FEATURE_VERSION",
     "SCHEMA_VERSION",
     "VECTOR_DIM",
     "feature_layout",
+    # embeddings (M2)
+    "EmbeddingGenerator",
+    "Embedding",
+    "EmbeddingBackfillSummary",
+    "EMBEDDING_VERSION",
+    "EMBEDDING_SCHEMA_VERSION",
+    "EMBEDDING_KIND",
+    "l2_normalize",
+    # errors
     "SimilarityError",
     "InvalidMemoryRecordError",
     "MissingFieldError",
     "UnsupportedVersionError",
+    "DimensionMismatchError",
+    "InvalidFeatureVectorError",
 ]
