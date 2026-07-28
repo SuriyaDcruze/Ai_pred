@@ -4,7 +4,39 @@
 Answer *"I have seen this setup before"* — find the most similar historical situations and
 report how trades actually fared in them. Pure **explainability**, honestly labelled.
 
-## Status: 🟢 Built — `app/ai/similarity_engine.py`
+## Status: 🟡 Two implementations. **(1) Legacy explainability** — `app/ai/similarity_engine.py`
+(kNN over intelligence features, folded into `/intelligence`; **context only, no edge** —
+below). **(2) Sprint 3 build over Historical Memory** — a new `app/similarity/` package that
+will fill the `memory_embeddings` placeholder and answer the `/memory/similar` contract.
+**M1 (Feature Vector Builder) delivered**; embeddings, similarity, and ranking are later
+milestones. See `sprints/sprint-02-report.md` (upstream) and the M1 section below.
+
+### As built — Sprint 3 · M1 (Feature Vector Builder)
+`app/similarity/{models,feature_vector}.py` — a **pure, deterministic** transform from a
+Historical Memory Record (`RetrievalEngine.MemoryRecord.to_dict()`) to a versioned numerical
+`FeatureVector`. It **does not** generate embeddings, compare vectors, rank similarity, or
+modify Historical Memory; it imports neither the Prediction nor Outcome engine (asserted).
+
+- **Feature version `sim-fv-1` → dimension 100** (schema_version 1). Layout is fixed and
+  immutable; **any** change to order/vocab/normalization requires a new `feature_version`.
+- **Groups (width):** Market 42 — sector (16, stable hash), regime (6), phase (4), volatility
+  (4), session (4), timeframe (8); Trade 10 — direction (3), confidence (value+present),
+  decision_score, stop/target distance, risk-reward, geometry-present; Outcome 9 — realised R
+  (value+present), holding (value+present), trade result (5); Model 24 — prediction/outcome/
+  feature version (8-bucket stable hash each); Context 15 — confidence bucket (10), factor
+  count, rule counts (n + passed), reasoning-present, embedding-present.
+- **Encoding strategy (deterministic + documented):** fixed one-hot **vocabularies** for
+  enums (unknown → all-zeros); **stable SHA-1 hashing** into fixed buckets for open
+  categoricals (sector, model versions) — never Python's salted `hash()`; **clamped min-max
+  scaling** for numerics with documented bands (confidence [0,1]; decision_score [-1,1];
+  realised R [-3,5]; holding [0,200]; distances [0,1]; risk-reward [0,10]); explicit
+  **present flags** so a missing value is distinct from a real zero.
+- **Validation (typed errors):** non-mapping / missing `prediction_id`|`status` →
+  `MissingFieldError`/`InvalidMemoryRecordError`; unknown `feature_version` or record schema
+  version > supported → `UnsupportedVersionError`. Structured logging of schema/feature
+  version + dimension — **never vector contents**. 19 unit tests (determinism, enum + hash
+  encoding, normalization, missing/optional fields, invalid records, version rejection,
+  dimension stability, real-record integration, no-engine-imports).
 
 ## Responsibilities
 - For a new setup, find the **k nearest neighbours** in standardised feature space from

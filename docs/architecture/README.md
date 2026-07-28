@@ -47,7 +47,7 @@ The individual volumes are authored on approval, in the priority agreed below.
 | 11 | [**Portfolio Intelligence**](11-portfolio-intelligence.md) | "₹X → allocation" — sizing, diversification, correlation | 🔴 not built |
 | 12 | [**Risk Engine**](12-risk-engine.md) | ATR stops, R-multiples, position sizing, portfolio risk | 🟢 built |
 | 13 | [**Historical Memory**](13-historical-memory.md) | Store every prediction+outcome; foundation for learning | 🟢 **Sprint 2 COMPLETE** (`v0.2.0`) — store, builder, retrieval, API |
-| 14 | [**Similarity Engine**](14-similarity-engine.md) | "I've seen this setup before" (explainability) | 🟢 built |
+| 14 | [**Similarity Engine**](14-similarity-engine.md) | "I've seen this setup before" (explainability) | 🟡 legacy kNN built; **Sprint 3 rebuild over Historical Memory in progress** (M1 feature vectors done) |
 | 15 | [**Learning Engine**](15-learning-engine.md) | Meta-model + nightly champion/challenger retrain | 🟡 built, needs data |
 | 16 | [**User Profile**](16-user-profile.md) | Preferences, watchlists, risk appetite, auth identity | 🔴 not built |
 | 17 | [**Paper Trading**](17-paper-trading.md) | Log recommendations, score vs real future price | 🟡 tracker exists |
