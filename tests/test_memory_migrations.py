@@ -101,7 +101,8 @@ def _apply_only_v1(path: str) -> sqlite3.Connection:
 def test_fresh_db_applies_all_migrations(tmp_path):
     conn = get_connection(str(tmp_path / "ph.db"))
     run_migrations(conn)
-    assert applied_versions(conn) == {1, 2, 3, 4, 5}
+    # Robust to appended migrations (e.g. Sprint 4's learning tables) — must include 1..5.
+    assert {1, 2, 3, 4, 5} <= applied_versions(conn) == {m.version for m in MIGRATIONS}
 
 
 def test_fresh_db_creates_satellite_tables_with_expected_columns(tmp_path):
@@ -134,9 +135,9 @@ def test_migrations_are_idempotent(tmp_path):
     conn = get_connection(str(tmp_path / "ph.db"))
     first = run_migrations(conn)
     second = run_migrations(conn)
-    assert first == [1, 2, 3, 4, 5]
+    assert first == sorted(m.version for m in MIGRATIONS)   # all applied, in order
     assert second == []                      # nothing re-applied
-    assert applied_versions(conn) == {1, 2, 3, 4, 5}
+    assert applied_versions(conn) == {m.version for m in MIGRATIONS}
 
 
 def test_rerun_preserves_tables_and_data(tmp_path):
@@ -161,9 +162,9 @@ def test_upgrade_from_sprint1_leaves_predictions_unchanged(tmp_path):
     cols_before = list(conn.execute("PRAGMA table_info(predictions)"))
     row_before = dict(conn.execute("SELECT * FROM predictions").fetchone())
 
-    # Upgrade to Sprint 2.
+    # Upgrade forward (everything after the Sprint-1 baseline).
     applied = run_migrations(conn)
-    assert applied == [2, 3, 4, 5]
+    assert applied == sorted(m.version for m in MIGRATIONS if m.version > 1)
 
     # The predictions TABLE definition and its data are byte-for-byte unchanged.
     assert _table_schema(conn, "predictions") == schema_before

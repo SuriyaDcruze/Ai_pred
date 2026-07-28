@@ -4,8 +4,9 @@
 > Process (identical to Sprints 1–3): **Architecture → Sprint Plan → Milestones → Review →
 > Approval → Implementation.** One milestone at a time with a review gate after each.
 >
-> **Status:** 🟡 Design — **awaiting approval.** Nothing implemented. Implementation of M1
-> begins only after this plan is explicitly approved.
+> **Status:** 🔨 Approved — implementing milestone by milestone. Both §0 reviewer decisions
+> confirmed (separate subsystem; descriptive-only, threshold-gated).
+> **M1 (Learning Dataset Builder): ✅ done — awaiting review.** M2–M6 pending.
 >
 > **Sprint sequence:** Sprint 1 (Forward Testing `v0.1.0`) → Sprint 2 (Historical Memory
 > `v0.2.0`) → Sprint 3 (Similarity Engine `v0.3.0`) → **Sprint 4 (Learning Engine `v0.4.0`)**.
@@ -181,7 +182,7 @@ truth.
 
 | M | Title | Scope | Deliverables |
 |---|---|---|---|
-| **M1** | Learning Dataset Builder | Deterministic, versioned `LearningDataset` assembled from Historical Memory (read-only). Carries `corpus_size`; empty corpus → empty dataset, never an error. Migrations for the learning tables + models. | `app/learning/{models,dataset}.py`; migrations; unit + migration tests |
+| **M1** ✅ | Learning Dataset Builder | Deterministic, versioned `LearningDataset` from Historical Memory (read-only); `INSUFFICIENT_DATA` below `min_corpus`; canonical states; learning storage foundation. | **done:** `app/learning/{models,dataset}.py`; migration `0006 learning_runs`; 23 tests. Only `migrations.py` appended (no Sprint 1–3 table changed). |
 | **M2** | Pattern Extraction | Group completed decisions by conditions (setup dimensions / winning-vs-losing conditions / confidence distributions) into **candidate** patterns with counts. **Descriptive only**, threshold-gated; deterministic ordering. | `app/learning/patterns.py`; tests |
 | **M3** | Statistical Validation | For each candidate: win rate, expectancy, avg R, drawdown, consistency + **confidence interval** + **significance** + **multiple-comparison correction**; **reuse `memory_aggregates`**. Emit only patterns clearing `min_sample` **and** a meaningful CI. | `app/learning/statistics.py`; tests + statistical-validation tests |
 | **M4** | Recommendation Engine | Turn **validated** patterns into **evidence-bound descriptive** recommendation objects (supporting trades + stats + confidence + sample size + **known limitations**). **Never** unsupported advice; framed as hypotheses for Forward Testing, not actions. | `app/learning/recommendations.py`; tests |

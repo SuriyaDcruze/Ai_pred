@@ -190,6 +190,35 @@ CREATE INDEX IF NOT EXISTS idx_pred_timeframe_created    ON predictions(timefram
 """
 
 
+# --------------------------------------------------------------------------- #
+# Sprint 4 · Milestone 1 — Behavioural Learning storage (foundation).
+#
+# The Behavioural Learning Engine (Vol 15, Sprint 4) is descriptive analytics over completed
+# Historical Memory — no training, no prediction, read-only over predictions/memory. Its
+# artifacts live in **their own** learning tables in this same database (ADR 0005), added by
+# append-only migrations; no Sprint 1–3 table is ever changed. `learning_runs` records the
+# metadata of one analysis/dataset run (audit + reproducibility); pattern/recommendation
+# tables arrive in their own milestones.
+# --------------------------------------------------------------------------- #
+_0006_CREATE_LEARNING_RUNS = """
+CREATE TABLE IF NOT EXISTS learning_runs (
+    run_id               TEXT    PRIMARY KEY,
+    kind                 TEXT    NOT NULL,          -- 'dataset' (later: 'analysis')
+    learning_version     TEXT    NOT NULL,
+    dataset_version      TEXT    NOT NULL,
+    created_at           TEXT    NOT NULL,
+    corpus_size          INTEGER NOT NULL,
+    checksum             TEXT,                       -- deterministic dataset fingerprint
+    status               TEXT,                       -- VALIDATED | HYPOTHESIS | INSUFFICIENT_DATA | NULL
+    params_json          TEXT,
+    source_versions_json TEXT,
+    build_duration_ms    REAL
+);
+
+CREATE INDEX IF NOT EXISTS idx_learning_runs_created ON learning_runs(created_at);
+"""
+
+
 #: All migrations, in ascending version order. **Append only.**
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=1, name="create_predictions", sql=_0001_CREATE_PREDICTIONS),
@@ -197,6 +226,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=3, name="create_memory_embeddings", sql=_0003_CREATE_MEMORY_EMBEDDINGS),
     Migration(version=4, name="create_memory_aggregates", sql=_0004_CREATE_MEMORY_AGGREGATES),
     Migration(version=5, name="memory_retrieval_indexes", sql=_0005_MEMORY_RETRIEVAL_INDEXES),
+    Migration(version=6, name="create_learning_runs", sql=_0006_CREATE_LEARNING_RUNS),
 )
 
 
