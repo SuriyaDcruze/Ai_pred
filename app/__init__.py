@@ -1,3 +1,3 @@
 """Aegis — institutional-grade real-time trading AI platform."""
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

@@ -133,6 +133,19 @@ tech debt), and **embeddings are storage-only** (NULL vectors until Vol 14). See
 - Serve as the source of truth for Forward Testing (Vol 18), the Learning Engine (Vol 15),
   and the audit trail (compliance).
 
+## Similarity integration (Sprint 3, Vol 14)
+Historical Memory is the substrate the Similarity Engine reads and writes into:
+- **Embeddings:** the Similarity Engine (Vol 14) fills the `memory_embeddings` placeholder with
+  a deterministic vector per decision (`sim-emb-1` = L2-normalised `sim-fv-1` feature vector),
+  via `MemoryStore.upsert_embedding`. `MemoryStore` remains the **only** writer of the satellite
+  tables; the Similarity Engine writes **only** `memory_embeddings` and modifies no memory facts.
+- **Retrieval integration:** `RetrievalEngine` composes the Memory Records that feed feature
+  vectors, and — via an **optional injected** similarity engine (setter DI, ADR 0015) — serves
+  the `/memory/similar` contract (`similar()` / `similar_by_embedding()`). With no engine
+  injected it returns the documented *unavailable*; existing retrieval behaviour is unchanged.
+- **Read-only over predictions:** the Similarity Engine reads Memory Records via `RetrievalEngine`
+  and imports neither the Prediction nor Outcome engine.
+
 ## Record schema (target)
 For every prediction store: timestamp · asset · timeframe · **feature vector** · direction
 prediction · outcome prediction (P target) · decision score · recommendation · entry/stop/

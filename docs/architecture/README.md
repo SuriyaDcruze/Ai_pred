@@ -47,7 +47,7 @@ The individual volumes are authored on approval, in the priority agreed below.
 | 11 | [**Portfolio Intelligence**](11-portfolio-intelligence.md) | "₹X → allocation" — sizing, diversification, correlation | 🔴 not built |
 | 12 | [**Risk Engine**](12-risk-engine.md) | ATR stops, R-multiples, position sizing, portfolio risk | 🟢 built |
 | 13 | [**Historical Memory**](13-historical-memory.md) | Store every prediction+outcome; foundation for learning | 🟢 **Sprint 2 COMPLETE** (`v0.2.0`) — store, builder, retrieval, API |
-| 14 | [**Similarity Engine**](14-similarity-engine.md) | "I've seen this setup before" (explainability) | 🟡 legacy kNN built; **Sprint 3 rebuild over Historical Memory in progress** (M1 feature vectors done) |
+| 14 | [**Similarity Engine**](14-similarity-engine.md) | "I've seen this setup before" (explainability) | 🟢 **Sprint 3 COMPLETE** (`v0.3.0`) — feature vectors, embeddings, cosine k-NN, `/memory/similar*` API |
 | 15 | [**Learning Engine**](15-learning-engine.md) | Meta-model + nightly champion/challenger retrain | 🟡 built, needs data |
 | 16 | [**User Profile**](16-user-profile.md) | Preferences, watchlists, risk appetite, auth identity | 🔴 not built |
 | 17 | [**Paper Trading**](17-paper-trading.md) | Log recommendations, score vs real future price | 🟡 tracker exists |
@@ -83,9 +83,13 @@ composed Memory Record + builder + retrieval + `/memory/*` API). Closure artifac
 - **[ADRs 0007–0011](adr/)** — satellite architecture · compose-on-read · retrieval-via-store ·
   thin API · similarity-contract.
 
-## 🔨 In progress: Sprint 3 — Similarity Engine (Volume 14)
-[Sprint 3 plan](sprints/sprint-03-similarity-plan.md) — fills `memory_embeddings` and lights
-up the `/memory/similar` contract. **M1 (Feature Vector Builder) done**; M2–M6 gated.
+## 🏁 Delivered: Sprint 3 — Similarity Engine (`v0.3.0-similarity-engine`, COMPLETE)
+Feature vectors → embeddings → cosine k-NN → retrieval integration → `/memory/similar*` API.
+Closure: [Sprint 3 plan](sprints/sprint-03-similarity-plan.md) · [Sprint 3 report](../sprints/sprint-03-report.md)
+· [Release notes](../releases/v0.3.0-similarity-engine.md) · [ADRs 0012–0016](adr/).
+
+**Next (awaiting approval):** Sprint 4 — Volume 15 Learning Engine (train/evaluate on the
+labelled history; model changes go through the model process, ADR 0002/0003).
 
 ## ✅ Book status: all 28 volumes authored (v1.0) · Review complete → v1.1 proposed
 

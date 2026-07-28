@@ -21,6 +21,11 @@ Format: [Michael Nygard's template](https://cognitect.com/blog/2011/11/15/docume
 | [0009](0009-retrieval-reads-via-predictionstore.md) | Retrieval reads predictions only via PredictionStore | Accepted | 2 |
 | [0010](0010-memory-api-thin-transport.md) | The `/memory/*` API is thin transport only | Accepted | 2 |
 | [0011](0011-similarity-contract-now-algorithm-later.md) | Similarity: contract now, algorithm later | Accepted | 2 |
+| [0012](0012-deterministic-feature-vectors.md) | Deterministic, versioned feature vectors | Accepted | 3 |
+| [0013](0013-deterministic-embeddings.md) | Deterministic embeddings (no training) | Accepted | 3 |
+| [0014](0014-similarity-engine-architecture.md) | Similarity Engine architecture (filter-first brute-force cosine) | Accepted | 3 |
+| [0015](0015-retrieval-integration-optional-di.md) | Retrieval integration via optional DI | Accepted | 3 |
+| [0016](0016-similarity-rest-api.md) | Similarity REST API (thin transport, single route owner) | Accepted | 3 |
 
 Related: the full Architecture Book lives in [../](../) (Volumes 00–28) and the
 Architecture Review in [../ARCHITECTURE-REVIEW-v1.md](../ARCHITECTURE-REVIEW-v1.md).

@@ -57,6 +57,25 @@ memory_aggregates ── derived from predictions (no FK; PK (dimension,bucket,m
   aggregate key includes `model_version`.
 - **Schema diagram:** see `sprints/sprint-02-historical-memory-plan.md` §4.5 and Volume 13.
 
+### `memory_embeddings` lifecycle (Sprint 3 · Vol 14)
+Sprint 3 **fills** the `memory_embeddings` table (added in migration `0003`) — it adds **no new
+migration**.
+- **Version metadata:** the frozen table has no dedicated version columns, so the Similarity
+  Engine stores `embedding_version` + `feature_version` packed in `model_name`
+  (`"sim-emb-1/sim-fv-1"`), the vector `dimension` in `dim` (100), and the metadata revision in
+  `schema_version`. Multiple `embedding_kind`s per prediction let a new scheme coexist with old
+  vectors (no destructive recompute).
+- **Deterministic storage:** the stored vector is the **L2-normalised** feature vector
+  (`sim-emb-1`) — bit-for-bit reproducible from the Memory Record; no training, no randomness.
+  Written **only** via `MemoryStore.upsert_embedding`, idempotent by
+  `(prediction_id, embedding_kind)`.
+- **Embedding lifecycle:** placeholder row (vector `NULL`) created by the Memory Builder →
+  populated by the Embedding Generator (`build_and_store` / `backfill_embeddings`) → read by the
+  Similarity Search Engine. Fully **derived** from `predictions` + feature encoding.
+- **Rebuild process:** embeddings are droppable + recomputable — `rebuild_embedding(prediction_id)`
+  overwrites one; `backfill_embeddings()` (re)builds all missing. Because they are derived, a bad
+  or stale embedding is never data loss.
+
 ## Target schema (Postgres)
 ```
 users(id, email, created_at, ...)                         ← Vol 16

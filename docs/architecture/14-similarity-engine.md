@@ -4,15 +4,33 @@
 Answer *"I have seen this setup before"* — find the most similar historical situations and
 report how trades actually fared in them. Pure **explainability**, honestly labelled.
 
-## Status: 🟡 Two implementations. **(1) Legacy explainability** — `app/ai/similarity_engine.py`
-(kNN over intelligence features, folded into `/intelligence`; **context only, no edge** —
-below). **(2) Sprint 3 build over Historical Memory** — a new `app/similarity/` package that
-will fill the `memory_embeddings` placeholder and answer the `/memory/similar` contract.
-**M1 (Feature Vectors) + M2 (Embeddings) + M3 (Similarity Search) + M4 (Retrieval
-integration) + M5 (REST API) delivered**; only the sprint freeze (M6) remains — the
-`/memory/similar*` API is live and wired into the app. See the **[Sprint 3
-plan](sprints/sprint-03-similarity-plan.md)** for the full breakdown, and the M1–M5 sections
-below.
+## Status: 🟢 Sprint 3 COMPLETE (`v0.3.0-similarity-engine`). Two implementations:
+**(1) Legacy explainability** — `app/ai/similarity_engine.py` (kNN over intelligence features,
+folded into `/intelligence`; **context only, no edge** — below). **(2) Sprint 3 build over
+Historical Memory** — the `app/similarity/` package + `/memory/similar*` API: feature vectors →
+embeddings → cosine k-NN → retrieval integration → REST, all deterministic and live. Built as
+**explainability, not a predictive edge**; populated only as Forward Testing accumulates a live
+corpus. 98 tests; full suite 567 passed. See the [Sprint 3 report](../sprints/sprint-03-report.md)
+and [plan](sprints/sprint-03-similarity-plan.md).
+
+### Pipeline (as built, Sprint 3)
+```
+Memory Record ─► FeatureVectorBuilder (sim-fv-1, dim 100) ─► EmbeddingGenerator (sim-emb-1, L2)
+   ─► memory_embeddings ─► SimilaritySearch (sim-search-1, cosine k-NN) ─► RetrievalEngine (DI)
+   ─► /memory/similar* REST API
+```
+
+### Deterministic guarantees, versioning & limitations
+- **Deterministic end-to-end:** same Memory Record → same feature vector → same embedding →
+  same ranked neighbours (stable sort `-similarity`, then `prediction_id`). Stable SHA-1 hashing
+  (never salted `hash()`); no randomness; no training; no inference.
+- **Versioning:** `feature_version` `sim-fv-1` · `embedding_version` `sim-emb-1` (packed with the
+  feature version in `model_name`) · `search_version` `sim-search-1`. Any change to encoding,
+  embedding transform, or ordering requires a **new** version; old vectors coexist by
+  `embedding_kind`. `GET /memory/similar/health` reports all versions + dimension.
+- **Limitations:** brute-force over a candidate set (no ANN in SQLite; logged cap; pgvector is
+  the scale path, Vol 21); near-empty live corpus until Forward Testing feeds it; **no
+  predictive edge claimed** — explainability only.
 
 ### As built — Sprint 3 · M5 (Similarity REST API)
 `app/api/similarity.py` — a **thin transport** router (`/memory/similar*`) over the M3 search
