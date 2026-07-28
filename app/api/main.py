@@ -31,6 +31,7 @@ from app.api.schemas import (
 )
 from app.api.forward import router as forward_router
 from app.api.memory import router as memory_router
+from app.api.similarity import router as similarity_router
 from app.chat.assistant import TradingAssistant
 from app.config import settings
 from app.data.schemas import Candle, candles_to_frame
@@ -79,8 +80,16 @@ async def lifespan(app: FastAPI):
     # the Prediction/Outcome engines (imports neither).
     memory_store = MemoryStore()
     app.state.memory_store = memory_store
-    app.state.retrieval = RetrievalEngine(forward_store, memory_store)
+    retrieval = RetrievalEngine(forward_store, memory_store)
+    app.state.retrieval = retrieval
     app.state.memory_builder = MemoryBuilder(forward_store, memory_store)
+    # Similarity Engine (Sprint 3) — read-only cosine k-NN over stored embeddings. Injected
+    # into retrieval so /memory/similar* is served; imports/modifies no engine.
+    from app.similarity.search import SimilaritySearchEngine
+
+    similarity_engine = SimilaritySearchEngine(retrieval, memory_store)
+    retrieval.set_similarity_engine(similarity_engine)
+    app.state.similarity_engine = similarity_engine
     # Hands-free AI logging — config lives on the server, so it keeps running
     # even when every browser tab is closed.
     app.state.autolog = {"enabled": False, "symbol": "BTCUSDT", "timeframe": "1m"}
@@ -103,6 +112,7 @@ app.add_middleware(
 )
 app.include_router(forward_router)   # Forward Testing — /forward/* (Sprint 1 · M4)
 app.include_router(memory_router)    # Historical Memory — /memory/* (Sprint 2 · M5)
+app.include_router(similarity_router)  # Similarity — /memory/similar* (Sprint 3 · M5)
 
 
 def _provider(symbol: str):

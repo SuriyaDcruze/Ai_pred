@@ -9,9 +9,35 @@ report how trades actually fared in them. Pure **explainability**, honestly labe
 below). **(2) Sprint 3 build over Historical Memory** — a new `app/similarity/` package that
 will fill the `memory_embeddings` placeholder and answer the `/memory/similar` contract.
 **M1 (Feature Vectors) + M2 (Embeddings) + M3 (Similarity Search) + M4 (Retrieval
-integration) delivered**; the REST API + freeze are the remaining milestones. See the
-**[Sprint 3 plan](sprints/sprint-03-similarity-plan.md)** for the full breakdown, and the
-M1–M4 sections below.
+integration) + M5 (REST API) delivered**; only the sprint freeze (M6) remains — the
+`/memory/similar*` API is live and wired into the app. See the **[Sprint 3
+plan](sprints/sprint-03-similarity-plan.md)** for the full breakdown, and the M1–M5 sections
+below.
+
+### As built — Sprint 3 · M5 (Similarity REST API)
+`app/api/similarity.py` — a **thin transport** router (`/memory/similar*`) over the M3 search
+engine + M4 retrieval integration; no search algorithm in the API, no direct DB access, no
+engine imports (asserted). The `SimilaritySearchEngine` is created in the app lifespan and
+**injected into `RetrievalEngine`** (via M4's setter), so the live endpoints work. This router
+**owns every `/memory/similar*` route** (moved out of `app/api/memory.py`) so `/health` and
+`/search` are matched before the `/{prediction_id}` catch-all.
+- **Endpoints:** `GET /memory/similar/{prediction_id}`, `GET /memory/similar?prediction_id=`
+  (query form), `POST /memory/similar/search` (body), `GET /memory/similar/health`. All search
+  forms accept `top_k`, `threshold`, and the candidate filters (symbol/sector/timeframe/
+  regime/phase/outcome/model/feature version).
+- **Response:** `available`, `reason`, `prediction_id`, `neighbours` (id, score, outcome,
+  realised R, confidence, holding period, market metadata, versions), `sample_size`, honest
+  `summary` (win rate / avg R / outcome distribution), `versions` (embedding/feature/search +
+  dimension), `metadata`. **Never** exposes raw embeddings, feature vectors, or internal
+  hashing.
+- **Errors:** `400` validation (top_k/threshold/missing target), `404` prediction/embedding
+  not found, `409` version mismatch, `503` Similarity Engine unavailable. (FastAPI type
+  coercion still yields `422`, the project standard.) Structured logging of endpoint + timing +
+  status — never embeddings. Pydantic models + generated OpenAPI. 19 API tests (every endpoint,
+  validation, errors, empty corpus, unavailable engine, determinism, OpenAPI, no-vector-leak).
+- **Note:** the placeholder `/memory/similar/{id}` was **moved** from `app/api/memory.py` to
+  this router (route ownership); the two Sprint-2 similarity API tests moved with it. The app’s
+  other `/memory/*` behaviour is unchanged.
 
 ### As built — Sprint 3 · M4 (Retrieval integration)
 The similarity contract is now activated by **injecting** the M3 engine into

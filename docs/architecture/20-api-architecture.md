@@ -20,7 +20,8 @@ limiting) needed before any public exposure.
 | `POST /chat` | conversation (Vol 07) |
 | `/calls*`, `/round`, `/autolog` | paper trading (Vol 17) |
 | `/forward/*` | Forward Testing — record & score live recommendations (Vol 18, Sprint 1 M4) |
-| `/memory/*` | Historical Memory — composed records, search, stats, timeline, similarity contract, GPT context (Vol 13, Sprint 2 M5) |
+| `/memory/*` | Historical Memory — composed records, search, stats, timeline, GPT context (Vol 13, Sprint 2 M5) |
+| `/memory/similar*` | Similarity Engine — cosine k-NN neighbours + honest stats (Vol 14, Sprint 3 M5) |
 | `WS /ws/signals` | live chart + signal stream |
 
 ### `/forward/*` (Forward Testing, `app/api/forward.py`)
@@ -50,7 +51,6 @@ engines already produced).
 | `GET /memory/search` | filtered + keyset-paginated search |
 | `GET /memory/statistics` | aggregate rollups + sample size (never computed in the API) |
 | `GET /memory/timeline` | chronological records for a symbol / date window |
-| `GET /memory/similar/{prediction_id}` | similarity contract — explicit *unavailable* (no fake scores) |
 | `GET /memory/context` | bounded, deterministic GPT grounding bundle |
 | `POST /memory/build/{prediction_id}` | enrich one prediction (idempotent) |
 | `POST /memory/backfill` | enrich all resolved-but-unbuilt (idempotent); returns counts |
@@ -59,6 +59,19 @@ engines already produced).
 Thin transport over the Retrieval Engine + Memory Builder (thin-controller pattern) — **no
 business logic, no direct DB access, no engine imports**. Errors map to `404`/`422`/`500`
 with no stack traces.
+
+### `/memory/similar*` (Similarity Engine, `app/api/similarity.py`, Sprint 3 M5)
+| Endpoint | Purpose |
+|---|---|
+| `GET /memory/similar/{prediction_id}` | k-NN neighbours of a prediction + honest summary + versions |
+| `GET /memory/similar?prediction_id=` | same, target as a query parameter (+ candidate filters) |
+| `POST /memory/similar/search` | same, target + filters in the request body |
+| `GET /memory/similar/health` | engine enabled? + embedding/feature/search version + dimension |
+
+Thin transport over the Similarity Search Engine (M3) — **no search algorithm in the API**.
+The engine is injected into `RetrievalEngine` in the app lifespan (M4 setter). Never exposes
+raw embeddings/feature vectors. Errors: `400` validation · `404` prediction/embedding ·
+`409` version mismatch · `503` engine unavailable.
 
 ## Contracts
 - Pydantic request/response models (`app/api/schemas.py`) — typed, validated.

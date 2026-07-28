@@ -186,15 +186,8 @@ def test_timeline_by_symbol_and_dates(client, predictions):
     assert body["count"] == 1
 
 
-# --------------------------------------------------------------------------- similarity
-def test_similar_is_unavailable(client, predictions):
-    pid = _seed(predictions)
-    body = client.get(f"/memory/similar/{pid}").json()
-    assert body == {"available": False, "reason": "Similarity Engine unavailable", "results": []}
-
-
-def test_similar_unknown_404(client):
-    assert client.get("/memory/similar/nope").status_code == 404
+# NOTE: the `/memory/similar*` endpoints moved to `app/api/similarity.py` (Sprint 3 · M5) —
+# they are covered in tests/test_similarity_api.py against the similarity router.
 
 
 # --------------------------------------------------------------------------- context
@@ -230,7 +223,7 @@ def test_openapi_generates_with_all_memory_paths():
     paths = app.openapi()["paths"]
     for expected in (
         "/memory/record/{prediction_id}", "/memory/search", "/memory/statistics",
-        "/memory/timeline", "/memory/similar/{prediction_id}", "/memory/context",
+        "/memory/timeline", "/memory/context",
         "/memory/build/{prediction_id}", "/memory/backfill", "/memory/rebuild-aggregates",
     ):
         assert expected in paths

@@ -5,8 +5,8 @@
 > Process (identical to Sprints 1–2): **Architecture → Sprint Plan → Milestones → Review →
 > Approval → Implementation.** One milestone at a time with a review gate after each.
 >
-> **Status:** 🔨 In progress. **M1: ✅ done. M2: ✅ done. M3: ✅ done. M4 (Retrieval
-> integration): ✅ done — awaiting review.** M5–M6 pending.
+> **Status:** 🔨 In progress. **M1–M4: ✅ done. M5 (REST API): ✅ done — awaiting review.**
+> M6 (docs & freeze) pending.
 >
 > **Note on process:** Sprint 3 began at an M1 implementation spec (no separate plan was
 > requested first). This document is written **after** M1 to give the sprint the same
@@ -116,7 +116,7 @@ integration → API → documentation.
 | **M2** ✅ | Embedding Generator | Deterministic **L2-normalised** embedding → `memory_embeddings` (via `MemoryStore`); idempotent backfill; **no training** | **done:** `app/similarity/embedding.py`; 21 tests. `sim-emb-1`, dim 100; versions packed in `model_name` (frozen table). No Sprint 1/2 files touched. | ✅ **done** |
 | **M3** ✅ | Similarity Search | Cosine k-NN; **filter-then-brute-force** over a pre-filtered candidate set; honest neighbour stats; logged caps; read-only | **done:** `app/similarity/search.py`; 22 tests (`sim-search-1`, deterministic order, no writes). No Sprint 1/2 files touched. | ✅ **done** |
 | **M4** ✅ | Retrieval integration | Inject an **optional** similarity engine into `RetrievalEngine` (setter DI, no import cycle); activate `similar()`/`similar_by_embedding()`; graceful fallback; still "unavailable" when disabled | **done:** additive change to `app/memory/retrieval.py` (the one Sprint 2 file); 17 tests; Sprint 2's 47 retrieval/API tests unchanged. App not wired yet (M5). | ✅ **done** |
-| **M5** | API | Expose similarity results (via the existing `/memory/similar` + any `/similarity/*` needed); validation, honest sample size | `app/api` additive; API tests | ⏳ pending |
+| **M5** ✅ | API | `/memory/similar*` (by-id, query, POST search, health); thin transport; validation; honest sample size; engine wired into the app | **done:** `app/api/similarity.py` (route ownership moved from `memory.py`); engine injected in lifespan; 19 API tests; 400/404/409/503 taxonomy. | ✅ **done** |
 | **M6** | Documentation & freeze | Vol 14 as-built, Sprint 3 report, ADRs, release notes (`v0.3.0`) | docs | ⏳ pending |
 
 **Design notes / decisions to confirm at each gate:**
@@ -187,4 +187,10 @@ integration → API → documentation.
   summary + versions; no raw vectors). The **one deliberate additive touch of a Sprint 2 file**
   (`retrieval.py`); Sprint 2's 47 retrieval/API tests pass unchanged. 17 tests. App wiring +
   richer API response deferred to M5.
-- M5–M6 — pending approval, one gate at a time.
+- **M5 (REST API) — ✅ done**: `app/api/similarity.py` — thin transport over the M3 engine;
+  four `/memory/similar*` routes (by-id, query-param, POST search, health); engine created in
+  the lifespan and injected into retrieval so the endpoints are live. Route ownership moved
+  from `memory.py` (single owner; `/health`+`/search` before the `/{id}` catch-all). Rich
+  honest response (neighbours + summary + versions; no raw vectors); 400/404/409/503 taxonomy;
+  OpenAPI generated. 19 API tests; the two Sprint-2 similarity API tests moved with the route.
+- M6 — pending approval (docs, Sprint 3 report, release notes `v0.3.0`, freeze).

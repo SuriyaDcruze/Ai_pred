@@ -51,10 +51,9 @@ class StatisticsResponse(BaseModel):
     aggregates: list[dict[str, Any]]
 
 
-class SimilarityResponse(BaseModel):
-    available: bool
-    reason: str
-    results: list[dict[str, Any]] = []
+# NOTE: the `/memory/similar*` routes moved to `app/api/similarity.py` (Sprint 3 · M5) so a
+# single router owns them (and route ordering places `/health` and `/search` before the
+# `/{prediction_id}` catch-all). This router no longer serves similarity.
 
 
 class BuildResponse(BaseModel):
@@ -230,17 +229,6 @@ async def timeline(
             count=page.count, next_cursor=page.next_cursor,
             records=[r.to_dict() for r in page.records],
         )
-
-
-@router.get("/similar/{prediction_id}", response_model=SimilarityResponse)
-async def similar(prediction_id: str, request: Request, k: int = Query(5, ge=1, le=100)) -> SimilarityResponse:
-    """Similar historical decisions — the documented **unavailable** contract (no fake scores)."""
-    with _observe("GET /memory/similar", prediction_id):
-        try:
-            result = _retrieval(request).similar(prediction_id, k=k)
-        except MemoryStoreError as exc:
-            raise _http_from(exc)
-        return SimilarityResponse(available=result.available, reason=result.reason, results=result.results)
 
 
 @router.get("/context")
