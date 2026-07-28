@@ -6,10 +6,11 @@ consumes Historical Memory (Sprint 2) and fills the `memory_embeddings` placehol
 performs **no** prediction and modifies neither Historical Memory nor the Prediction/Outcome
 engines.
 
-**Current state (Milestones 1–2):** the **Feature Vector Builder** (Memory Record → versioned
-numerical vector) and the **Embedding Generator** — a deterministic L2-normalised embedding of
-that vector, stored in ``memory_embeddings``. It does *not* compare vectors, rank similarity,
-or expose an API; those are later milestones.
+**Current state (Milestones 1–3):** the **Feature Vector Builder** (Memory Record → versioned
+numerical vector), the **Embedding Generator** (deterministic L2-normalised embedding stored in
+``memory_embeddings``), and the **Similarity Search Engine** — read-only cosine k-NN over those
+embeddings with honest neighbour statistics. It does *not* yet expose an API or wire into the
+Retrieval Engine; those are later milestones.
 """
 
 from __future__ import annotations
@@ -35,9 +36,21 @@ from app.similarity.models import (
     FeatureVector,
     InvalidFeatureVectorError,
     InvalidMemoryRecordError,
+    MissingEmbeddingError,
     MissingFieldError,
+    SearchRequestError,
     SimilarityError,
     UnsupportedVersionError,
+)
+from app.similarity.search import (
+    METRIC,
+    SIMILARITY_VERSION,
+    SimilarityFilter,
+    SimilarityNeighbour,
+    SimilaritySearchEngine,
+    SimilaritySearchResult,
+    SimilaritySummary,
+    cosine_similarity,
 )
 
 __all__ = [
@@ -56,6 +69,15 @@ __all__ = [
     "EMBEDDING_SCHEMA_VERSION",
     "EMBEDDING_KIND",
     "l2_normalize",
+    # search (M3)
+    "SimilaritySearchEngine",
+    "SimilarityFilter",
+    "SimilarityNeighbour",
+    "SimilaritySummary",
+    "SimilaritySearchResult",
+    "cosine_similarity",
+    "SIMILARITY_VERSION",
+    "METRIC",
     # errors
     "SimilarityError",
     "InvalidMemoryRecordError",
@@ -63,4 +85,6 @@ __all__ = [
     "UnsupportedVersionError",
     "DimensionMismatchError",
     "InvalidFeatureVectorError",
+    "MissingEmbeddingError",
+    "SearchRequestError",
 ]

@@ -37,6 +37,14 @@ class InvalidFeatureVectorError(SimilarityError):
     """A feature vector is malformed (e.g. contains NaN/inf) and cannot be embedded."""
 
 
+class MissingEmbeddingError(SimilarityError):
+    """A prediction has no stored embedding to search from."""
+
+
+class SearchRequestError(SimilarityError):
+    """A similarity search request is malformed (bad k, threshold, cap, or filter)."""
+
+
 # --------------------------------------------------------------------------- vector
 @dataclass(frozen=True)
 class FeatureVector:

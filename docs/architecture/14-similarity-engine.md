@@ -8,10 +8,38 @@ report how trades actually fared in them. Pure **explainability**, honestly labe
 (kNN over intelligence features, folded into `/intelligence`; **context only, no edge** —
 below). **(2) Sprint 3 build over Historical Memory** — a new `app/similarity/` package that
 will fill the `memory_embeddings` placeholder and answer the `/memory/similar` contract.
-**M1 (Feature Vector Builder) + M2 (Embedding Generator) delivered**; similarity search,
-retrieval integration, and API are later milestones. See the **[Sprint 3
+**M1 (Feature Vectors) + M2 (Embeddings) + M3 (Similarity Search) delivered**; retrieval
+integration and API are later milestones. See the **[Sprint 3
 plan](sprints/sprint-03-similarity-plan.md)** for the full milestone breakdown, and the
-M1/M2 sections below.
+M1/M2/M3 sections below.
+
+### As built — Sprint 3 · M3 (Similarity Search Engine)
+`app/similarity/search.py` — **read-only** cosine k-NN over the embeddings stored in
+`memory_embeddings` (M2). It performs **no writes**, generates no embeddings, retrains
+nothing, modifies neither Historical Memory nor `predictions`, exposes no HTTP, and imports
+neither engine (asserted). It reports **facts only** — never a recommendation.
+- **Metric:** cosine similarity (`cosine_similarity`) — identical direction `1.0`, orthogonal
+  `0.0`, opposite `-1.0`; a zero vector yields `0.0`. Embeddings are unit-length (M2), so
+  cosine = dot product.
+- **Algorithm `sim-search-1` — filter-first, then brute-force:** candidates are narrowed by
+  Memory-Record predicates (symbol, sector, timeframe, market regime, **market phase**,
+  outcome, prediction-model / feature version — phase applied in-app since `MemoryFilter` lacks
+  it), each candidate embedding is compared by cosine, thresholded by `min_similarity`, and
+  sorted **deterministically** (`-similarity`, then `prediction_id`); the top *k* are returned.
+- **Candidate cap:** bounds the brute-force set; when the cap bites it is **logged** and
+  `cap_applied=True` (never silent). SQLite has no ANN index — pgvector is the scale path.
+- **Query forms:** `search_by_prediction(id)` (neighbours of a stored prediction, excludes
+  itself; `MissingEmbeddingError` if unembedded) and `search(embedding)` (arbitrary query).
+  Candidates of an **incompatible embedding version** are skipped with a logged count.
+- **Result:** per-neighbour `prediction_id`, `similarity_score`, confidence, outcome, realised
+  R, holding, market metadata, embedding/feature version — **no raw vectors**. Plus an honest
+  `SimilaritySummary` (sample size, win rate, avg realised R, outcome distribution).
+- **Typed errors:** `MissingEmbeddingError` / `SearchRequestError` (bad k/threshold/cap) /
+  `UnsupportedVersionError` / `DimensionMismatchError` / `InvalidFeatureVectorError`. Structured
+  logging of timing + candidate/compared/returned counts + version — **never vector values**.
+  Read-only + thread-safe. 22 tests (cosine correctness, ranking + tie-break determinism,
+  top-k, filtering, cap, threshold, empty corpus, dedup, version/dimension/request validation,
+  summary stats, concurrency, no-writes, no-engine-imports).
 
 ### As built — Sprint 3 · M2 (Embedding Generator)
 `app/similarity/embedding.py` — a **deterministic** transform of a feature vector into an
