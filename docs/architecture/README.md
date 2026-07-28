@@ -88,8 +88,11 @@ Feature vectors → embeddings → cosine k-NN → retrieval integration → `/m
 Closure: [Sprint 3 plan](sprints/sprint-03-similarity-plan.md) · [Sprint 3 report](../sprints/sprint-03-report.md)
 · [Release notes](../releases/v0.3.0-similarity-engine.md) · [ADRs 0012–0016](adr/).
 
-**Next (awaiting approval):** Sprint 4 — Volume 15 Learning Engine (train/evaluate on the
-labelled history; model changes go through the model process, ADR 0002/0003).
+## 📐 Next: Sprint 4 — Learning Engine (Volume 15, design, awaiting approval)
+[Sprint 4 plan](sprints/sprint-04-learning-plan.md) — **descriptive, honesty-gated analytics**
+over Historical Memory (patterns + statistics + evidence-bound recommendations); **no training,
+no prediction** (distinct from the legacy meta-model retrainer). **Planning only; no
+implementation until approved** — see the two reviewer decisions in §0.
 
 ## ✅ Book status: all 28 volumes authored (v1.0) · Review complete → v1.1 proposed
 
