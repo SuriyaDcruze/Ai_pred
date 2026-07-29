@@ -4,8 +4,8 @@
 > document.** Process (identical to Sprints 1–4): **Architecture → Sprint Plan → Milestones →
 > Review → Approval → Implementation.** One milestone at a time with a review gate after each.
 >
-> **Status:** ⏳ **Awaiting architecture review + approval.** No implementation (not even M1)
-> begins until this plan is approved and the two §0 reviewer decisions are confirmed.
+> **Status:** 🔨 **Approved — implementing milestone by milestone.** **M1 (Domain model &
+> composition contract): ✅ done — awaiting review.** M2–M6 pending.
 >
 > **Sprint sequence:** Sprint 1 (Forward Testing `v0.1.0`) → Sprint 2 (Historical Memory
 > `v0.2.0`) → Sprint 3 (Similarity Engine `v0.3.0`) → Sprint 4 (Learning Engine `v0.4.0`) →
@@ -251,7 +251,7 @@ all of them and is depended on by none of them (no cycles).
 
 | M | Title | Objective | Responsibilities / Deliverables | Dependencies |
 |---|---|---|---|---|
-| **M1** | Domain model & composition contract | Define the deterministic, versioned **Decision Intelligence object** + canonical states + the contract for which engine contributes which facet and how absence/thin data is represented. | Domain models + version stamps + `INSUFFICIENT_DATA`/degradation semantics; the (optional) storage foundation decision. **No composition logic yet.** | Sprints 1–4 read surfaces |
+| **M1** ✅ | Domain model & composition contract | Define the deterministic, versioned **Decision Intelligence object** + canonical states + the contract for which engine contributes which facet and how absence/thin data is represented. | **done:** `app/decision_intelligence/{models,__init__}.py`; 22 tests. Canonical states `EMPTY`/`INSUFFICIENT_DATA`/`PARTIAL`/`COMPLETE`/`STALE`/`ERROR`; `di-1` + upstream-version stamps; `Provenance`/`EvidenceRef`/`DecisionComponent` contract (no subsystem populates another's section); deterministic immutable `decision_id` + SHA-256 checksum; serialization foundation (dict/row) — **no table, no composition, no engine reads**. Imports no engine (AST-asserted). No Sprint 1–4 file touched. | Sprints 1–4 read surfaces |
 | **M2** | Composition Engine | **Assemble** the object for a prediction (or symbol) by reading each engine's existing output verbatim — prediction/outcome verdict + memory context + similarity neighbours + learning observations — deterministically, honesty-gated, recomputing nothing. | The read-only composition engine; graceful degradation to prediction-only; determinism (checksum). | M1 |
 | **M3** | Evidence & Explanation | Build the **traceability graph** (every element → its source ids) and a **descriptive For/Against** narrative assembled from the engines' honest statements. **Descriptive only — never advice.** | Evidence graph + narrative generator; auditability guarantees; no-advice framing. | M2 |
 | **M4** | Composite confidence & prioritisation | A deterministic, **evidence-bound** composite confidence (how strong/consistent the composed picture is — **not** a new prediction, cf. Learning's communication-confidence) and a stable ordering/prioritisation across decisions. Optional append-only snapshot store. | Composite-confidence rubric (from sample sizes + agreement + CI widths) + deterministic ordering; optional `0010` audit table. | M3 |

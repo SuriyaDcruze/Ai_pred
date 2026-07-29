@@ -1,5 +1,3 @@
-
-
 # Sprint 4 — Learning Engine (Volume 15) · Architecture & Implementation Plan
 
 > **Planning only. No code, no SQL, no endpoints are written in this document.**
