@@ -218,6 +218,30 @@ CREATE TABLE IF NOT EXISTS learning_runs (
 CREATE INDEX IF NOT EXISTS idx_learning_runs_created ON learning_runs(created_at);
 """
 
+# 0007 — learning_patterns: candidate behavioural patterns (Sprint 4 · M2). **Metadata only**
+# — grouping key/value + evidence references + counts. NO statistics/confidence/recommendations
+# (those are later milestones, in their own columns/tables). Its own table; no Sprint 1–3 table
+# is changed. Derived + rebuildable from the Learning Dataset.
+_0007_CREATE_LEARNING_PATTERNS = """
+CREATE TABLE IF NOT EXISTS learning_patterns (
+    pattern_id           TEXT    PRIMARY KEY,
+    run_id               TEXT,                       -- FK to learning_runs (set when persisted)
+    learning_version     TEXT    NOT NULL,
+    dataset_version      TEXT    NOT NULL,
+    pattern_type         TEXT    NOT NULL,           -- SETUP | MARKET | CONFIDENCE | MODEL | HOLDING | OUTCOME | INSTRUMENT
+    grouping_key         TEXT    NOT NULL,           -- the dimension (e.g. 'sector')
+    grouping_value       TEXT    NOT NULL,           -- the bucket (e.g. 'Energy')
+    evidence_count       INTEGER NOT NULL,
+    prediction_ids_json  TEXT,                        -- evidence: the supporting prediction ids
+    corpus_size          INTEGER,
+    status               TEXT,                        -- HYPOTHESIS (M2) — never VALIDATED yet
+    created_at           TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_learning_patterns_run ON learning_patterns(run_id);
+CREATE INDEX IF NOT EXISTS idx_learning_patterns_key ON learning_patterns(grouping_key);
+"""
+
 
 #: All migrations, in ascending version order. **Append only.**
 MIGRATIONS: tuple[Migration, ...] = (
@@ -227,6 +251,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=4, name="create_memory_aggregates", sql=_0004_CREATE_MEMORY_AGGREGATES),
     Migration(version=5, name="memory_retrieval_indexes", sql=_0005_MEMORY_RETRIEVAL_INDEXES),
     Migration(version=6, name="create_learning_runs", sql=_0006_CREATE_LEARNING_RUNS),
+    Migration(version=7, name="create_learning_patterns", sql=_0007_CREATE_LEARNING_PATTERNS),
 )
 
 

@@ -67,6 +67,22 @@ class CorruptedMetadataError(LearningError):
     """A record's metadata is present but malformed."""
 
 
+class InvalidDatasetError(LearningError):
+    """The input to pattern extraction is not a well-formed Learning Dataset."""
+
+
+class UnknownDimensionError(LearningError):
+    """A pattern dimension was requested that the extractor does not know."""
+
+
+class DuplicatePatternError(LearningError):
+    """Two candidate patterns share an identifier (a determinism/keying bug)."""
+
+
+class InconsistentEvidenceError(LearningError):
+    """A pattern's evidence_count does not match its list of supporting prediction ids."""
+
+
 def _utc_now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
 
@@ -278,3 +294,108 @@ class LearningRun:
             params_json=_get(row, "params_json"), source_versions_json=_get(row, "source_versions_json"),
             build_duration_ms=_get(row, "build_duration_ms"),
         )
+
+
+# --------------------------------------------------------------------------- candidate pattern
+def _pattern_id(learning_version: str, dataset_version: str, grouping_key: str, grouping_value: str) -> str:
+    """A deterministic id for a pattern — a function of its identity, so the same dataset always
+    yields the same ids (never a random UUID)."""
+    raw = f"{learning_version}|{dataset_version}|{grouping_key}={grouping_value}"
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+
+
+@dataclass(frozen=True)
+class CandidatePattern:
+    """A recurring historical condition (a group of completed decisions sharing a key/value).
+
+    **Metadata + evidence only** — no computed statistics, confidence, or recommendation. Its
+    id is deterministic (a function of version + grouping), and it keeps the supporting
+    ``prediction_ids`` so any later statistic traces back to its originating records. In
+    Milestone 2 every returned pattern is a ``HYPOTHESIS`` (never ``VALIDATED``).
+    """
+
+    pattern_id: str
+    learning_version: str
+    dataset_version: str
+    pattern_type: str
+    grouping_key: str
+    grouping_value: str
+    evidence_count: int
+    prediction_ids: tuple[str, ...]
+    corpus_size: int
+    status: LearningStatus
+    created_at: str = field(default_factory=_utc_now_iso)
+
+    def __post_init__(self) -> None:
+        if self.evidence_count != len(self.prediction_ids):
+            raise InconsistentEvidenceError(
+                f"{self.pattern_id}: evidence_count {self.evidence_count} != {len(self.prediction_ids)} ids"
+            )
+
+    @classmethod
+    def create(
+        cls, *, learning_version: str, dataset_version: str, pattern_type: str,
+        grouping_key: str, grouping_value: str, prediction_ids: "list[str] | tuple[str, ...]",
+        corpus_size: int, status: LearningStatus,
+    ) -> "CandidatePattern":
+        """Build a pattern with a deterministic id and sorted evidence."""
+        ids = tuple(sorted(prediction_ids))
+        return cls(
+            pattern_id=_pattern_id(learning_version, dataset_version, grouping_key, grouping_value),
+            learning_version=learning_version, dataset_version=dataset_version,
+            pattern_type=pattern_type, grouping_key=grouping_key, grouping_value=grouping_value,
+            evidence_count=len(ids), prediction_ids=ids, corpus_size=corpus_size, status=status,
+        )
+
+    def stable_dict(self) -> dict[str, Any]:
+        """Deterministic content (excludes ``created_at``) — for the extraction checksum."""
+        return {
+            "pattern_id": self.pattern_id, "pattern_type": self.pattern_type,
+            "grouping_key": self.grouping_key, "grouping_value": self.grouping_value,
+            "evidence_count": self.evidence_count, "prediction_ids": list(self.prediction_ids),
+            "status": self.status.value,
+        }
+
+    def to_row(self) -> dict[str, Any]:
+        return {
+            "pattern_id": self.pattern_id, "run_id": None,
+            "learning_version": self.learning_version, "dataset_version": self.dataset_version,
+            "pattern_type": self.pattern_type, "grouping_key": self.grouping_key,
+            "grouping_value": self.grouping_value, "evidence_count": self.evidence_count,
+            "prediction_ids_json": json.dumps(list(self.prediction_ids)),
+            "corpus_size": self.corpus_size, "status": self.status.value,
+            "created_at": self.created_at,
+        }
+
+    @classmethod
+    def from_row(cls, row: Mapping[str, Any]) -> "CandidatePattern":
+        ids = json.loads(_get(row, "prediction_ids_json") or "[]")
+        return cls(
+            pattern_id=_get(row, "pattern_id"), learning_version=_get(row, "learning_version"),
+            dataset_version=_get(row, "dataset_version"), pattern_type=_get(row, "pattern_type"),
+            grouping_key=_get(row, "grouping_key"), grouping_value=_get(row, "grouping_value"),
+            evidence_count=int(_get(row, "evidence_count", 0)), prediction_ids=tuple(ids),
+            corpus_size=int(_get(row, "corpus_size", 0)),
+            status=LearningStatus(_get(row, "status", LearningStatus.HYPOTHESIS.value)),
+            created_at=_get(row, "created_at"),
+        )
+
+
+@dataclass(frozen=True)
+class PatternExtractionResult:
+    """The result of one pattern-extraction pass over a Learning Dataset."""
+
+    patterns: tuple[CandidatePattern, ...]
+    status: LearningStatus              # INSUFFICIENT_DATA (no patterns) or HYPOTHESIS
+    corpus_size: int
+    dimensions: tuple[str, ...]
+    insufficient_groups: int            # groups below min_evidence (dropped, not silent)
+    learning_version: str
+    dataset_version: str
+    checksum: str
+    min_evidence: int
+    created_at: str = field(default_factory=_utc_now_iso)
+
+    @property
+    def pattern_count(self) -> int:
+        return len(self.patterns)

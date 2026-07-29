@@ -6,7 +6,8 @@
 >
 > **Status:** 🔨 Approved — implementing milestone by milestone. Both §0 reviewer decisions
 > confirmed (separate subsystem; descriptive-only, threshold-gated).
-> **M1 (Learning Dataset Builder): ✅ done — awaiting review.** M2–M6 pending.
+> **M1 (Learning Dataset Builder): ✅ done. M2 (Pattern Extraction): ✅ done — awaiting
+> review.** M3–M6 pending.
 >
 > **Sprint sequence:** Sprint 1 (Forward Testing `v0.1.0`) → Sprint 2 (Historical Memory
 > `v0.2.0`) → Sprint 3 (Similarity Engine `v0.3.0`) → **Sprint 4 (Learning Engine `v0.4.0`)**.
@@ -183,7 +184,7 @@ truth.
 | M | Title | Scope | Deliverables |
 |---|---|---|---|
 | **M1** ✅ | Learning Dataset Builder | Deterministic, versioned `LearningDataset` from Historical Memory (read-only); `INSUFFICIENT_DATA` below `min_corpus`; canonical states; learning storage foundation. | **done:** `app/learning/{models,dataset}.py`; migration `0006 learning_runs`; 23 tests. Only `migrations.py` appended (no Sprint 1–3 table changed). |
-| **M2** | Pattern Extraction | Group completed decisions by conditions (setup dimensions / winning-vs-losing conditions / confidence distributions) into **candidate** patterns with counts. **Descriptive only**, threshold-gated; deterministic ordering. | `app/learning/patterns.py`; tests |
+| **M2** ✅ | Pattern Extraction | Group completed decisions by conditions into deterministic **candidate** patterns (metadata + evidence only). **Descriptive only**; `HYPOTHESIS`/`INSUFFICIENT_DATA` (never `VALIDATED`). | **done:** `app/learning/patterns.py`; migration `0007 learning_patterns`; 25 tests. Read-only; only `migrations.py` appended. |
 | **M3** | Statistical Validation | For each candidate: win rate, expectancy, avg R, drawdown, consistency + **confidence interval** + **significance** + **multiple-comparison correction**; **reuse `memory_aggregates`**. Emit only patterns clearing `min_sample` **and** a meaningful CI. | `app/learning/statistics.py`; tests + statistical-validation tests |
 | **M4** | Recommendation Engine | Turn **validated** patterns into **evidence-bound descriptive** recommendation objects (supporting trades + stats + confidence + sample size + **known limitations**). **Never** unsupported advice; framed as hypotheses for Forward Testing, not actions. | `app/learning/recommendations.py`; tests |
 | **M5** | REST API | `/learning/*` thin transport (summaries, recommendations, statistics, confidence, evidence); validation; honest sample size; 400/404/409/503 taxonomy. | `app/api/learning.py`; API tests |

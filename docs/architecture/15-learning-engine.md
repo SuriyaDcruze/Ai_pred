@@ -40,6 +40,26 @@ engine (asserted).
   filtering, empty/insufficient, validation, migration, concurrency, no-writes, no-engine-
   imports).
 
+**M2 — Pattern Extraction Engine** (`app/learning/patterns.py`): a **pure, read-only**
+transform that groups the Learning Dataset into deterministic **candidate patterns** — still
+**descriptive only** (no statistics/significance/CIs/recommendations); imports neither engine.
+- **`CandidatePattern`** = one recurring condition: a deterministic `pattern_id` (a function of
+  version + grouping, never random), `pattern_type`, `grouping_key`/`grouping_value`,
+  `evidence_count`, the supporting **`prediction_ids`** (full traceability), `corpus_size`,
+  `status`. **Metadata + evidence only.** Every returned pattern is a `HYPOTHESIS`; an
+  empty/thin dataset (or no group reaching `min_evidence`) → `INSUFFICIENT_DATA`. **Never
+  `VALIDATED`** (that is M3).
+- **Dimensions** (extensible registry): symbol, sector, timeframe, market regime/phase,
+  confidence bucket, prediction-model / feature version, holding-period bucket, outcome
+  category. Groups below `min_evidence` (default 3) are dropped and **counted**
+  (`insufficient_groups`), never silent. Deterministic ordering + a SHA-256 checksum → same
+  dataset yields identical patterns.
+- **Typed validation** (malformed dataset / unsupported version / unknown dimension / duplicate
+  id / inconsistent evidence). Structured logging of corpus/pattern counts + version + status —
+  never vectors/embeddings/reasoning. Thread-safe, idempotent, writes nothing.
+- **Storage foundation:** append-only migration `0007` adds `learning_patterns` (**metadata
+  only** — no stat columns); its own table, no Sprint 1–3 table changed. 25 tests.
+
 ---
 
 ## (A) Meta-model retrainer — status: 🟡 Built, waiting on data — `app/training/meta.py`,
