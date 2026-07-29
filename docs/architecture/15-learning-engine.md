@@ -91,7 +91,7 @@ neither engine.
   vectors, or embeddings.
 - **Storage foundation:** append-only migration `0008` adds `learning_pattern_stats` (statistics +
   CI + significance + correction columns); its own table, no Sprint 1–3 table changed. The
-  validator is **read-only** (writes nothing yet). 28 tests (primitives, determinism, CI,
+  validator is **read-only** (writes nothing yet). 29 tests (primitives, determinism, CI,
   significance, correction strategies, sample floor, hypothesis-vs-validated, insufficient/empty,
   corrupted/malformed/version, concurrency, **regression vs Sprint 2 aggregates**, migration +
   round-trip, no-writes, no-engine-imports).
