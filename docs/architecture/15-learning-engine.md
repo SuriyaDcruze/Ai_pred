@@ -125,6 +125,29 @@ deterministic** transform that turns the **VALIDATED** patterns (M3) into eviden
   limitations, no-advice, dedup, empty/malformed/version/missing-evidence, concurrency, migration
   + round-trip, no-writes, no-engine-imports).
 
+**M5 — Learning REST API** (`app/api/learning.py`): a **thin transport** over M1–M4, mounted at
+`/learning/*` beside `/memory/*`. It validates requests, **composes** the (pure, read-only)
+pipeline — Dataset → Patterns → Statistics → Recommendations — and serialises deterministic
+responses. **No analytics of its own**; imports neither engine; never writes, retrains, or
+predicts.
+- **Endpoints:** `GET /learning/summary` · `/patterns` · `/statistics` · `/recommendations` ·
+  `/evidence/{recommendation_id}` · `GET /learning/health` · `POST /learning/run`. Patterns /
+  statistics / recommendations support **filtering** (symbol / sector / timeframe / regime /
+  status / category / confidence) and **deterministic pagination** (stable `pattern_key` /
+  `recommendation_key` order). Every response carries a **metadata envelope** (`schema_version`,
+  `learning_version`, `dataset_version`, `generated_at`) + the domain **checksums**.
+- **Stateless = deterministic.** Each request re-composes the pipeline over the current corpus;
+  because every stage is deterministic, concurrent identical requests return identical content
+  (asserted). `POST /learning/run` is **idempotent** — a stable `run_id` per (corpus + params).
+- **Error taxonomy:** 400 (bad filter/param, unknown correction), 404 (unknown recommendation),
+  409 (learning/schema-version mismatch), 422 (FastAPI type/bounds), 503 (retrieval unavailable);
+  full OpenAPI models. Empty corpus → honest `INSUFFICIENT_DATA` everywhere.
+- **Mounting:** `app/api/main.py` gains one `include_router(learning_router)` line (the only
+  change outside `app/learning/`); reuses the app-lifespan `RetrievalEngine`. Structured logging
+  of endpoint + duration + status — never vectors/embeddings/reasoning. 24 tests (every endpoint,
+  validation, pagination, filtering, ordering, error taxonomy, health, evidence, concurrency,
+  schema-version, OpenAPI, no-engine-imports).
+
 ---
 
 ## (A) Meta-model retrainer — status: 🟡 Built, waiting on data — `app/training/meta.py`,
