@@ -96,6 +96,35 @@ neither engine.
   corrupted/malformed/version, concurrency, **regression vs Sprint 2 aggregates**, migration +
   round-trip, no-writes, no-engine-imports).
 
+**M4 — Recommendation Engine** (`app/learning/recommendations.py`): a **pure, read-only,
+deterministic** transform that turns the **VALIDATED** patterns (M3) into evidence-bound
+**descriptive** recommendation objects. It performs **no statistics** (it restates M3's figures),
+**never** predicts, trains, or gives trading advice, exposes no HTTP; imports neither engine.
+- **`Recommendation`** = one auditable historical observation: deterministic `recommendation_id`
+  / `recommendation_key` (= `learning_version|pattern_key|recommendation_type`) / sha256
+  `recommendation_hash`; the `pattern_key`/`pattern_hash` it describes; a `recommendation_type`
+  (`HISTORICAL_STRENGTH` / `HISTORICAL_WEAKNESS` / `UNSTABLE_BEHAVIOUR`, extensible) and a
+  dimension-based `recommendation_category` (Sector/Regime/Timeframe/Symbol/Confidence/Risk/Model
+  Observation); plain-language `title`/`summary`/`detailed_explanation`/`statistical_basis`; the
+  M3 `ConfidenceInterval` + `Significance` verbatim; a `consistency_score`; the supporting
+  **`prediction_ids`** (sourced from the **M2 candidate patterns**, so M3's output is *not*
+  modified to carry evidence); and an always-non-empty `limitations` list.
+- **Communication confidence ≠ significance.** `recommendation_confidence` (`HIGH`/`MEDIUM`/`LOW`)
+  is confidence in *communicating* the observation, from a deterministic 0–7 rubric over four
+  evidence-quality factors — sample size, CI width, consistency, evidence traceability — **not**
+  the p-value. A statistically significant but small/wide-CI pattern is still `LOW`.
+- **Descriptive framing enforced.** Language is *"Historically, … resolved with an X% win rate
+  across N trades (95% CI …)"*, tagged a hypothesis to validate live; a test asserts advice
+  phrases ("you should", "will win", "take this trade", …) never appear. Only VALIDATED patterns
+  become recommendations; none → run status `INSUFFICIENT_DATA` (fabricates nothing).
+- **Storage foundation:** append-only migration `0009` adds `learning_recommendations` (its own
+  table; no Sprint 1–3 / M1–M3 table changed). The engine is **read-only** (writes nothing yet).
+  Deterministic (SHA-256 checksum), thread-safe, idempotent; duplicate identities collapsed.
+  Structured logging of counts + confidence distribution — never vectors/embeddings/reasoning.
+  21 tests (classifier/rubric, determinism, identity, evidence traceability, contextual
+  limitations, no-advice, dedup, empty/malformed/version/missing-evidence, concurrency, migration
+  + round-trip, no-writes, no-engine-imports).
+
 ---
 
 ## (A) Meta-model retrainer — status: 🟡 Built, waiting on data — `app/training/meta.py`,

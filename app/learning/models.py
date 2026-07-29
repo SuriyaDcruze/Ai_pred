@@ -95,6 +95,14 @@ class UnknownCorrectionError(LearningError):
     """An unknown multiple-comparison correction strategy was requested."""
 
 
+class InvalidValidationError(LearningError):
+    """The input to the Recommendation Engine is not a well-formed validation result/pattern."""
+
+
+class MissingEvidenceError(LearningError):
+    """A validated pattern has no supporting evidence available to build a recommendation."""
+
+
 def _utc_now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
 
@@ -594,3 +602,156 @@ class ValidationResult:
     @property
     def pattern_count(self) -> int:
         return len(self.validated_patterns)
+
+
+# ---------------------------------------------------------------- recommendations (M4)
+class RecommendationType(str, Enum):
+    """The performance/stability character of a validated pattern (part of the recommendation's
+    deterministic identity). Extend by adding a member — existing keys are unchanged."""
+
+    HISTORICAL_STRENGTH = "HISTORICAL_STRENGTH"     # win rate significantly ABOVE the baseline
+    HISTORICAL_WEAKNESS = "HISTORICAL_WEAKNESS"     # win rate significantly BELOW the baseline
+    UNSTABLE_BEHAVIOUR = "UNSTABLE_BEHAVIOUR"       # win rate not stable across sub-periods
+    STABLE_BEHAVIOUR = "STABLE_BEHAVIOUR"           # (reserved for extension)
+
+
+class RecommendationConfidence(str, Enum):
+    """Confidence in **communicating** the observation — NOT statistical significance. Derived
+    deterministically from sample size, CI width, consistency, and evidence quality."""
+
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
+
+
+def _recommendation_key(learning_version: str, pattern_key: str, recommendation_type: str) -> str:
+    """The deterministic identity key of a recommendation (a function of the validated pattern +
+    its type + the learning version) — the same logical recommendation always keys the same."""
+    return f"{learning_version}|{pattern_key}|{recommendation_type}"
+
+
+@dataclass(frozen=True)
+class Recommendation:
+    """An evidence-bound **descriptive** historical observation about a validated pattern.
+
+    **Never advice, never a prediction.** It restates M3's already-computed statistics in
+    plain language, carries the supporting ``prediction_id``s (full auditability), always lists
+    ``limitations``, and tags a **communication** confidence (independent of significance). Its
+    ``recommendation_id`` is deterministic (a function of the pattern key + type + version), so
+    identical inputs always yield identical recommendations."""
+
+    recommendation_id: str
+    recommendation_key: str
+    recommendation_hash: str
+    learning_version: str
+    dataset_version: str
+    pattern_key: str
+    pattern_hash: str
+    recommendation_type: RecommendationType
+    recommendation_category: str
+    title: str
+    summary: str
+    detailed_explanation: str
+    statistical_basis: str
+    evidence_count: int
+    sample_size: int
+    confidence_interval: ConfidenceInterval
+    significance: Significance
+    consistency_score: float | None
+    recommendation_confidence: RecommendationConfidence
+    supporting_prediction_ids: tuple[str, ...]
+    limitations: tuple[str, ...]
+    run_id: str | None = None
+    generated_at: str = field(default_factory=_utc_now_iso)
+
+    def stable_dict(self) -> dict[str, Any]:
+        """Deterministic content (excludes ``generated_at`` / ``run_id``) — for the run checksum."""
+        return {
+            "recommendation_id": self.recommendation_id, "recommendation_key": self.recommendation_key,
+            "recommendation_hash": self.recommendation_hash, "pattern_key": self.pattern_key,
+            "pattern_hash": self.pattern_hash, "recommendation_type": self.recommendation_type.value,
+            "recommendation_category": self.recommendation_category, "title": self.title,
+            "summary": self.summary, "detailed_explanation": self.detailed_explanation,
+            "statistical_basis": self.statistical_basis, "evidence_count": self.evidence_count,
+            "sample_size": self.sample_size,
+            "confidence_interval": self.confidence_interval.stable_dict(),
+            "significance": self.significance.stable_dict(),
+            "consistency_score": _round(self.consistency_score),
+            "recommendation_confidence": self.recommendation_confidence.value,
+            "supporting_prediction_ids": list(self.supporting_prediction_ids),
+            "limitations": list(self.limitations),
+        }
+
+    def to_row(self) -> dict[str, Any]:
+        ci, sig = self.confidence_interval, self.significance
+        return {
+            "recommendation_id": self.recommendation_id, "recommendation_key": self.recommendation_key,
+            "recommendation_hash": self.recommendation_hash, "run_id": self.run_id,
+            "learning_version": self.learning_version, "dataset_version": self.dataset_version,
+            "pattern_key": self.pattern_key, "pattern_hash": self.pattern_hash,
+            "recommendation_type": self.recommendation_type.value,
+            "recommendation_category": self.recommendation_category, "title": self.title,
+            "summary": self.summary, "detailed_explanation": self.detailed_explanation,
+            "statistical_basis": self.statistical_basis, "evidence_count": self.evidence_count,
+            "sample_size": self.sample_size, "ci_low": ci.low, "ci_high": ci.high,
+            "ci_width": ci.width, "ci_quality": ci.quality, "p_value": sig.p_value,
+            "z_score": sig.z_score, "baseline": sig.baseline, "significant": int(sig.significant),
+            "consistency_score": self.consistency_score,
+            "recommendation_confidence": self.recommendation_confidence.value,
+            "supporting_prediction_ids_json": json.dumps(list(self.supporting_prediction_ids)),
+            "limitations_json": json.dumps(list(self.limitations)), "generated_at": self.generated_at,
+        }
+
+    @classmethod
+    def from_row(cls, row: Mapping[str, Any]) -> "Recommendation":
+        ci = ConfidenceInterval(
+            low=_get(row, "ci_low"), high=_get(row, "ci_high"), width=_get(row, "ci_width"),
+            quality=_get(row, "ci_quality"),
+        )
+        sig = Significance(
+            p_value=_get(row, "p_value"), z_score=_get(row, "z_score"),
+            baseline=_get(row, "baseline"), significant=bool(_get(row, "significant", 0)),
+        )
+        return cls(
+            recommendation_id=_get(row, "recommendation_id"),
+            recommendation_key=_get(row, "recommendation_key"),
+            recommendation_hash=_get(row, "recommendation_hash"), run_id=_get(row, "run_id"),
+            learning_version=_get(row, "learning_version"), dataset_version=_get(row, "dataset_version"),
+            pattern_key=_get(row, "pattern_key"), pattern_hash=_get(row, "pattern_hash"),
+            recommendation_type=RecommendationType(_get(row, "recommendation_type")),
+            recommendation_category=_get(row, "recommendation_category"), title=_get(row, "title"),
+            summary=_get(row, "summary"), detailed_explanation=_get(row, "detailed_explanation"),
+            statistical_basis=_get(row, "statistical_basis"),
+            evidence_count=int(_get(row, "evidence_count", 0)),
+            sample_size=int(_get(row, "sample_size", 0)), confidence_interval=ci, significance=sig,
+            consistency_score=_get(row, "consistency_score"),
+            recommendation_confidence=RecommendationConfidence(_get(row, "recommendation_confidence")),
+            supporting_prediction_ids=tuple(json.loads(_get(row, "supporting_prediction_ids_json") or "[]")),
+            limitations=tuple(json.loads(_get(row, "limitations_json") or "[]")),
+            generated_at=_get(row, "generated_at"),
+        )
+
+
+@dataclass(frozen=True)
+class RecommendationResult:
+    """The result of one recommendation-generation pass over a validation result.
+
+    Deterministic: identical validation + candidates + config always yield identical
+    recommendations and the same ``checksum``. A run with no VALIDATED patterns → status
+    ``INSUFFICIENT_DATA`` and no recommendations (fabricates nothing)."""
+
+    recommendations: tuple[Recommendation, ...]
+    status: LearningStatus
+    validated_patterns_processed: int
+    recommendations_created: int
+    rejected: int
+    confidence_distribution: dict[str, int]
+    learning_version: str
+    dataset_version: str
+    checksum: str
+    generation_duration_ms: float
+    generated_at: str = field(default_factory=_utc_now_iso)
+
+    @property
+    def recommendation_count(self) -> int:
+        return len(self.recommendations)

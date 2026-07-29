@@ -1,3 +1,5 @@
+
+
 # Sprint 4 — Learning Engine (Volume 15) · Architecture & Implementation Plan
 
 > **Planning only. No code, no SQL, no endpoints are written in this document.**
@@ -7,7 +9,7 @@
 > **Status:** 🔨 Approved — implementing milestone by milestone. Both §0 reviewer decisions
 > confirmed (separate subsystem; descriptive-only, threshold-gated).
 > **M1 (Learning Dataset Builder): ✅ done. M2 (Pattern Extraction): ✅ done. M3 (Statistical
-> Validation): ✅ done — awaiting review.** M4–M6 pending.
+> Validation): ✅ done. M4 (Recommendation Engine): ✅ done — awaiting review.** M5–M6 pending.
 >
 > **Sprint sequence:** Sprint 1 (Forward Testing `v0.1.0`) → Sprint 2 (Historical Memory
 > `v0.2.0`) → Sprint 3 (Similarity Engine `v0.3.0`) → **Sprint 4 (Learning Engine `v0.4.0`)**.
@@ -186,7 +188,7 @@ truth.
 | **M1** ✅ | Learning Dataset Builder | Deterministic, versioned `LearningDataset` from Historical Memory (read-only); `INSUFFICIENT_DATA` below `min_corpus`; canonical states; learning storage foundation. | **done:** `app/learning/{models,dataset}.py`; migration `0006 learning_runs`; 23 tests. Only `migrations.py` appended (no Sprint 1–3 table changed). |
 | **M2** ✅ | Pattern Extraction | Group completed decisions by conditions into deterministic **candidate** patterns (metadata + evidence only). **Descriptive only**; `HYPOTHESIS`/`INSUFFICIENT_DATA` (never `VALIDATED`). | **done:** `app/learning/patterns.py`; migration `0007 learning_patterns`; 25 tests. Read-only; only `migrations.py` appended. |
 | **M3** ✅ | Statistical Validation | For each candidate: win rate, expectancy, avg R, drawdown, consistency + **confidence interval** + **significance** + **multiple-comparison correction**; **reuse `memory_aggregates`**. Emit only patterns clearing `min_sample` **and** a meaningful CI. | **done:** `app/learning/statistics.py`; migration `0008 learning_pattern_stats`; 29 tests (644 total). Reuses the Sprint 2 `_metrics` (regression-asserted); Wilson CI + two-proportion z-test + BH/Bonferroni (extensible); `VALIDATED`/`HYPOTHESIS`/`INSUFFICIENT_DATA`. Read-only; only `migrations.py` appended. |
-| **M4** | Recommendation Engine | Turn **validated** patterns into **evidence-bound descriptive** recommendation objects (supporting trades + stats + confidence + sample size + **known limitations**). **Never** unsupported advice; framed as hypotheses for Forward Testing, not actions. | `app/learning/recommendations.py`; tests |
+| **M4** ✅ | Recommendation Engine | Turn **validated** patterns into **evidence-bound descriptive** recommendation objects (supporting trades + stats + confidence + sample size + **known limitations**). **Never** unsupported advice; framed as hypotheses for Forward Testing, not actions. | **done:** `app/learning/recommendations.py`; migration `0009 learning_recommendations`; 21 tests. Read-only; evidence ids sourced from M2 candidates (M3 untouched); communication-confidence rubric independent of significance; no-advice asserted. Only `migrations.py` appended. |
 | **M5** | REST API | `/learning/*` thin transport (summaries, recommendations, statistics, confidence, evidence); validation; honest sample size; 400/404/409/503 taxonomy. | `app/api/learning.py`; API tests |
 | **M6** | Documentation & freeze | Vol 15 as-built (disambiguated from the retrainer), ADRs, Sprint 4 report, release notes `v0.4.0`, version bump, tag. | docs |
 

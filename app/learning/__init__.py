@@ -11,12 +11,14 @@ edge.
 **Distinct from** the legacy meta-model retrainer in `app/training/` (Volume 15's other sense),
 which *does* train models via the validated promotion pipeline — a separate subsystem.
 
-**Current state (Milestones 1–3):** the **Learning Dataset Builder** (deterministic, read-only
+**Current state (Milestones 1–4):** the **Learning Dataset Builder** (deterministic, read-only
 view of completed decisions), the **Pattern Extraction Engine** (groups the dataset into
-deterministic candidate patterns — descriptive only), and the **Statistical Validation Engine**
+deterministic candidate patterns — descriptive only), the **Statistical Validation Engine**
 (descriptive statistics + confidence intervals + significance + multiple-comparison correction →
-`VALIDATED`/`HYPOTHESIS`/`INSUFFICIENT_DATA`, reusing the Sprint 2 aggregate math). Recommendations
-and the REST API arrive in later milestones.
+`VALIDATED`/`HYPOTHESIS`/`INSUFFICIENT_DATA`, reusing the Sprint 2 aggregate math), and the
+**Recommendation Engine** (turns VALIDATED patterns into evidence-bound **descriptive**
+recommendation objects — never advice, never a prediction). The REST API arrives in a later
+milestone.
 """
 
 from __future__ import annotations
@@ -39,9 +41,15 @@ from app.learning.models import (
     LearningError,
     LearningRecord,
     LearningRun,
+    InvalidValidationError,
     LearningStatus,
     MalformedPatternError,
+    MissingEvidenceError,
     PatternExtractionResult,
+    Recommendation,
+    RecommendationConfidence,
+    RecommendationResult,
+    RecommendationType,
     Significance,
     StatisticsError,
     UnknownCorrectionError,
@@ -72,6 +80,14 @@ from app.learning.statistics import (
     consistency_score,
     proportion_ztest,
     wilson_interval,
+)
+from app.learning.recommendations import (
+    CATEGORY_BY_DIMENSION,
+    UNSTABLE_THRESHOLD,
+    RecommendationEngine,
+    recommendation_category,
+    recommendation_confidence,
+    recommendation_type_of,
 )
 
 __all__ = [
@@ -111,6 +127,17 @@ __all__ = [
     "DEFAULT_BASELINE",
     "DEFAULT_CORRECTION",
     "DEFAULT_PERIODS",
+    # recommendations (M4)
+    "RecommendationEngine",
+    "Recommendation",
+    "RecommendationResult",
+    "RecommendationType",
+    "RecommendationConfidence",
+    "recommendation_category",
+    "recommendation_type_of",
+    "recommendation_confidence",
+    "CATEGORY_BY_DIMENSION",
+    "UNSTABLE_THRESHOLD",
     # errors
     "LearningError",
     "InvalidMemoryRecordError",
@@ -125,4 +152,6 @@ __all__ = [
     "MalformedPatternError",
     "StatisticsError",
     "UnknownCorrectionError",
+    "InvalidValidationError",
+    "MissingEvidenceError",
 ]

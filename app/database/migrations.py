@@ -289,6 +289,51 @@ CREATE INDEX IF NOT EXISTS idx_learning_stats_key    ON learning_pattern_stats(g
 CREATE INDEX IF NOT EXISTS idx_learning_stats_status ON learning_pattern_stats(status);
 """
 
+# 0009 — learning_recommendations: evidence-bound **descriptive** recommendation objects
+# (Sprint 4 · M4). One row per VALIDATED pattern turned into a plain-language, auditable historical
+# observation — statistical basis (verbatim from M3) + supporting prediction ids + limitations +
+# a communication-confidence label. **Descriptive only — never trading advice, never a prediction.**
+# Its own table; **no Sprint 1–3 (or M1–M3) table is changed**. Derived + rebuildable; the engine
+# is read-only, so nothing is written here until a later (persisting) milestone.
+_0009_CREATE_LEARNING_RECOMMENDATIONS = """
+CREATE TABLE IF NOT EXISTS learning_recommendations (
+    recommendation_id             TEXT    PRIMARY KEY,
+    recommendation_key            TEXT    NOT NULL,       -- deterministic identity key
+    recommendation_hash           TEXT,                    -- sha256 of the key (audit)
+    run_id                        TEXT,                    -- FK to learning_runs (set when persisted)
+    learning_version              TEXT    NOT NULL,
+    dataset_version               TEXT    NOT NULL,
+    pattern_key                   TEXT    NOT NULL,        -- the validated pattern this describes
+    pattern_hash                  TEXT,
+    recommendation_type           TEXT,                    -- HISTORICAL_STRENGTH | ..._WEAKNESS | (UN)STABLE_BEHAVIOUR
+    recommendation_category       TEXT,                    -- Sector/Regime/Timeframe/... Observation
+    title                         TEXT,
+    summary                       TEXT,
+    detailed_explanation          TEXT,
+    statistical_basis             TEXT,
+    evidence_count                INTEGER,
+    sample_size                   INTEGER,
+    ci_low                        REAL,
+    ci_high                       REAL,
+    ci_width                      REAL,
+    ci_quality                    TEXT,
+    p_value                       REAL,
+    z_score                       REAL,
+    baseline                      REAL,
+    significant                   INTEGER,
+    consistency_score             REAL,
+    recommendation_confidence     TEXT,                    -- HIGH | MEDIUM | LOW (communication, not significance)
+    supporting_prediction_ids_json TEXT,                   -- evidence: the trades behind the observation
+    limitations_json              TEXT,                    -- always non-empty
+    generated_at                  TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_learning_recs_run        ON learning_recommendations(run_id);
+CREATE INDEX IF NOT EXISTS idx_learning_recs_pattern    ON learning_recommendations(pattern_key);
+CREATE INDEX IF NOT EXISTS idx_learning_recs_category   ON learning_recommendations(recommendation_category);
+CREATE INDEX IF NOT EXISTS idx_learning_recs_confidence ON learning_recommendations(recommendation_confidence);
+"""
+
 
 #: All migrations, in ascending version order. **Append only.**
 MIGRATIONS: tuple[Migration, ...] = (
@@ -300,6 +345,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=6, name="create_learning_runs", sql=_0006_CREATE_LEARNING_RUNS),
     Migration(version=7, name="create_learning_patterns", sql=_0007_CREATE_LEARNING_PATTERNS),
     Migration(version=8, name="create_learning_pattern_stats", sql=_0008_CREATE_LEARNING_PATTERN_STATS),
+    Migration(version=9, name="create_learning_recommendations", sql=_0009_CREATE_LEARNING_RECOMMENDATIONS),
 )
 
 
