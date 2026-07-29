@@ -242,6 +242,53 @@ CREATE INDEX IF NOT EXISTS idx_learning_patterns_run ON learning_patterns(run_id
 CREATE INDEX IF NOT EXISTS idx_learning_patterns_key ON learning_patterns(grouping_key);
 """
 
+# 0008 — learning_pattern_stats: statistically **validated** learning artifacts (Sprint 4 · M3).
+# One row per candidate pattern that went through the Statistical Validation Engine: descriptive
+# statistics (reusing the Sprint 2 aggregate math), a 95% confidence interval, a significance
+# test, and the multiple-comparison correction outcome — plus the resulting lifecycle status
+# (VALIDATED | HYPOTHESIS | INSUFFICIENT_DATA). Its own table; **no Sprint 1–3 table is changed**.
+# Derived + rebuildable from the Learning Dataset + candidate patterns; the validator is
+# read-only, so nothing is written here until a later (persisting) milestone.
+_0008_CREATE_LEARNING_PATTERN_STATS = """
+CREATE TABLE IF NOT EXISTS learning_pattern_stats (
+    pattern_key            TEXT    PRIMARY KEY,
+    run_id                 TEXT,                       -- FK to learning_runs (set when persisted)
+    learning_version       TEXT    NOT NULL,
+    dataset_version        TEXT    NOT NULL,
+    pattern_type           TEXT,
+    grouping_key           TEXT    NOT NULL,
+    grouping_value         TEXT    NOT NULL,
+    sample_size            INTEGER NOT NULL,
+    wins                   INTEGER,
+    losses                 INTEGER,
+    win_rate               REAL,
+    loss_rate              REAL,
+    average_r              REAL,
+    expectancy             REAL,
+    profit_factor          REAL,
+    max_drawdown_r         REAL,
+    avg_holding_bars       REAL,
+    ci_low                 REAL,                       -- 95% Wilson interval on win rate
+    ci_high                REAL,
+    ci_width               REAL,
+    ci_quality             TEXT,                       -- HIGH | MODERATE | LOW (by width)
+    p_value                REAL,                       -- raw two-sided proportion test vs baseline
+    z_score                REAL,
+    baseline               REAL,
+    significant            INTEGER,                    -- raw significance (pre-correction), 0/1
+    correction_method      TEXT,                       -- benjamini_hochberg | bonferroni | none
+    correction_significant INTEGER,                    -- significant AFTER multiple-comparison, 0/1
+    consistency_score      REAL,                       -- sub-period stability (1 = stable), or NULL
+    status                 TEXT,                        -- VALIDATED | HYPOTHESIS | INSUFFICIENT_DATA
+    evidence_count         INTEGER,
+    created_at             TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_learning_stats_run    ON learning_pattern_stats(run_id);
+CREATE INDEX IF NOT EXISTS idx_learning_stats_key    ON learning_pattern_stats(grouping_key);
+CREATE INDEX IF NOT EXISTS idx_learning_stats_status ON learning_pattern_stats(status);
+"""
+
 
 #: All migrations, in ascending version order. **Append only.**
 MIGRATIONS: tuple[Migration, ...] = (
@@ -252,6 +299,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=5, name="memory_retrieval_indexes", sql=_0005_MEMORY_RETRIEVAL_INDEXES),
     Migration(version=6, name="create_learning_runs", sql=_0006_CREATE_LEARNING_RUNS),
     Migration(version=7, name="create_learning_patterns", sql=_0007_CREATE_LEARNING_PATTERNS),
+    Migration(version=8, name="create_learning_pattern_stats", sql=_0008_CREATE_LEARNING_PATTERN_STATS),
 )
 
 

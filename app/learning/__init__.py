@@ -11,11 +11,12 @@ edge.
 **Distinct from** the legacy meta-model retrainer in `app/training/` (Volume 15's other sense),
 which *does* train models via the validated promotion pipeline — a separate subsystem.
 
-**Current state (Milestones 1–2):** the **Learning Dataset Builder** (deterministic, read-only
-view of completed decisions) and the **Pattern Extraction Engine** (groups the dataset into
-deterministic candidate patterns — descriptive only, `HYPOTHESIS`/`INSUFFICIENT_DATA`, no
-statistics). Statistical validation, recommendations and the REST API arrive in later
-milestones.
+**Current state (Milestones 1–3):** the **Learning Dataset Builder** (deterministic, read-only
+view of completed decisions), the **Pattern Extraction Engine** (groups the dataset into
+deterministic candidate patterns — descriptive only), and the **Statistical Validation Engine**
+(descriptive statistics + confidence intervals + significance + multiple-comparison correction →
+`VALIDATED`/`HYPOTHESIS`/`INSUFFICIENT_DATA`, reusing the Sprint 2 aggregate math). Recommendations
+and the REST API arrive in later milestones.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from app.learning.models import (
     DEFAULT_MIN_CORPUS,
     LEARNING_VERSION,
     CandidatePattern,
+    ConfidenceInterval,
     CorruptedMetadataError,
     DuplicatePatternError,
     IncompleteOutcomeError,
@@ -38,9 +40,15 @@ from app.learning.models import (
     LearningRecord,
     LearningRun,
     LearningStatus,
+    MalformedPatternError,
     PatternExtractionResult,
+    Significance,
+    StatisticsError,
+    UnknownCorrectionError,
     UnknownDimensionError,
     UnsupportedVersionError,
+    ValidatedPattern,
+    ValidationResult,
     checksum_of,
 )
 from app.learning.patterns import (
@@ -50,6 +58,20 @@ from app.learning.patterns import (
     available_dimensions,
     confidence_bucket,
     holding_bucket,
+)
+from app.learning.statistics import (
+    CORRECTION_STRATEGIES,
+    DEFAULT_ALPHA,
+    DEFAULT_BASELINE,
+    DEFAULT_CORRECTION,
+    DEFAULT_MIN_SAMPLE,
+    DEFAULT_PERIODS,
+    StatisticalValidator,
+    available_corrections,
+    ci_quality,
+    consistency_score,
+    proportion_ztest,
+    wilson_interval,
 )
 
 __all__ = [
@@ -72,6 +94,23 @@ __all__ = [
     "confidence_bucket",
     "holding_bucket",
     "DEFAULT_MIN_EVIDENCE",
+    # statistical validation (M3)
+    "StatisticalValidator",
+    "ValidatedPattern",
+    "ValidationResult",
+    "ConfidenceInterval",
+    "Significance",
+    "CORRECTION_STRATEGIES",
+    "available_corrections",
+    "wilson_interval",
+    "ci_quality",
+    "proportion_ztest",
+    "consistency_score",
+    "DEFAULT_MIN_SAMPLE",
+    "DEFAULT_ALPHA",
+    "DEFAULT_BASELINE",
+    "DEFAULT_CORRECTION",
+    "DEFAULT_PERIODS",
     # errors
     "LearningError",
     "InvalidMemoryRecordError",
@@ -83,4 +122,7 @@ __all__ = [
     "UnknownDimensionError",
     "DuplicatePatternError",
     "InconsistentEvidenceError",
+    "MalformedPatternError",
+    "StatisticsError",
+    "UnknownCorrectionError",
 ]

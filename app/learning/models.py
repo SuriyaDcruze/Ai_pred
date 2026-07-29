@@ -83,6 +83,18 @@ class InconsistentEvidenceError(LearningError):
     """A pattern's evidence_count does not match its list of supporting prediction ids."""
 
 
+class MalformedPatternError(LearningError):
+    """The input to statistical validation is not a well-formed candidate pattern."""
+
+
+class StatisticsError(LearningError):
+    """A statistic could not be computed from the evidence (e.g. non-finite realised R)."""
+
+
+class UnknownCorrectionError(LearningError):
+    """An unknown multiple-comparison correction strategy was requested."""
+
+
 def _utc_now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
 
@@ -399,3 +411,186 @@ class PatternExtractionResult:
     @property
     def pattern_count(self) -> int:
         return len(self.patterns)
+
+
+# ---------------------------------------------------------------- statistical validation (M3)
+def _round(value: float | None, ndigits: int = 10) -> float | None:
+    """Round a float for a stable, cross-run checksum; passes through None / non-finite."""
+    if value is None:
+        return None
+    v = float(value)
+    if v != v or v in (float("inf"), float("-inf")):  # NaN / ±inf carried verbatim
+        return v
+    return round(v, ndigits)
+
+
+@dataclass(frozen=True)
+class ConfidenceInterval:
+    """A confidence interval on a rate — the interval is reported, never the point estimate
+    alone. ``quality`` is a coarse label of the interval's width (a wide CI is not actionable)."""
+
+    low: float
+    high: float
+    width: float
+    quality: str                     # HIGH | MODERATE | LOW (narrower ⇒ higher quality)
+    method: str = "wilson"
+    level: float = 0.95
+
+    def stable_dict(self) -> dict[str, Any]:
+        return {
+            "low": _round(self.low), "high": _round(self.high), "width": _round(self.width),
+            "quality": self.quality, "method": self.method, "level": self.level,
+        }
+
+
+@dataclass(frozen=True)
+class Significance:
+    """The outcome of a two-sided significance test of a pattern's win rate vs a baseline
+    (default: a coin flip). ``significant`` is the **raw** verdict, *before* the run's
+    multiple-comparison correction (which is applied across the family of patterns)."""
+
+    p_value: float
+    z_score: float
+    baseline: float
+    significant: bool
+    test: str = "two_proportion_z"
+
+    def stable_dict(self) -> dict[str, Any]:
+        return {
+            "p_value": _round(self.p_value), "z_score": _round(self.z_score),
+            "baseline": _round(self.baseline), "significant": self.significant, "test": self.test,
+        }
+
+
+@dataclass(frozen=True)
+class ValidatedPattern:
+    """A candidate pattern after statistical validation — descriptive statistics + a confidence
+    interval + a (corrected) significance verdict + a lifecycle ``status``.
+
+    A pattern becomes ``VALIDATED`` only when it clears the minimum sample, is significant **after**
+    multiple-comparison correction, and its confidence interval excludes the baseline; below the
+    sample floor it is ``INSUFFICIENT_DATA``; otherwise it stays a ``HYPOTHESIS``. **No
+    recommendation** is produced here (that is a later milestone). Its ``pattern_key`` is the
+    deterministic pattern identity (a function of version + grouping), so the same logical pattern
+    always carries the same key; every field traces back to the supporting ``evidence_count``."""
+
+    pattern_key: str
+    learning_version: str
+    dataset_version: str
+    pattern_type: str
+    grouping_key: str
+    grouping_value: str
+    sample_size: int
+    wins: int
+    losses: int
+    win_rate: float
+    loss_rate: float
+    average_r: float
+    expectancy: float
+    profit_factor: float | None
+    max_drawdown_r: float | None
+    avg_holding_bars: float | None
+    confidence_interval: ConfidenceInterval
+    significance: Significance
+    correction_method: str
+    correction_significant: bool
+    consistency_score: float | None
+    status: LearningStatus
+    evidence_count: int
+    run_id: str | None = None
+    created_at: str = field(default_factory=_utc_now_iso)
+
+    def stable_dict(self) -> dict[str, Any]:
+        """Deterministic content (excludes ``created_at`` / ``run_id``) — for the run checksum."""
+        return {
+            "pattern_key": self.pattern_key, "pattern_type": self.pattern_type,
+            "grouping_key": self.grouping_key, "grouping_value": self.grouping_value,
+            "sample_size": self.sample_size, "wins": self.wins, "losses": self.losses,
+            "win_rate": _round(self.win_rate), "loss_rate": _round(self.loss_rate),
+            "average_r": _round(self.average_r), "expectancy": _round(self.expectancy),
+            "profit_factor": _round(self.profit_factor), "max_drawdown_r": _round(self.max_drawdown_r),
+            "avg_holding_bars": _round(self.avg_holding_bars),
+            "confidence_interval": self.confidence_interval.stable_dict(),
+            "significance": self.significance.stable_dict(),
+            "correction_method": self.correction_method,
+            "correction_significant": self.correction_significant,
+            "consistency_score": _round(self.consistency_score), "status": self.status.value,
+            "evidence_count": self.evidence_count,
+        }
+
+    def to_row(self) -> dict[str, Any]:
+        ci, sig = self.confidence_interval, self.significance
+        return {
+            "pattern_key": self.pattern_key, "run_id": self.run_id,
+            "learning_version": self.learning_version, "dataset_version": self.dataset_version,
+            "pattern_type": self.pattern_type, "grouping_key": self.grouping_key,
+            "grouping_value": self.grouping_value, "sample_size": self.sample_size,
+            "wins": self.wins, "losses": self.losses, "win_rate": self.win_rate,
+            "loss_rate": self.loss_rate, "average_r": self.average_r, "expectancy": self.expectancy,
+            "profit_factor": self.profit_factor, "max_drawdown_r": self.max_drawdown_r,
+            "avg_holding_bars": self.avg_holding_bars, "ci_low": ci.low, "ci_high": ci.high,
+            "ci_width": ci.width, "ci_quality": ci.quality, "p_value": sig.p_value,
+            "z_score": sig.z_score, "baseline": sig.baseline, "significant": int(sig.significant),
+            "correction_method": self.correction_method,
+            "correction_significant": int(self.correction_significant),
+            "consistency_score": self.consistency_score, "status": self.status.value,
+            "evidence_count": self.evidence_count, "created_at": self.created_at,
+        }
+
+    @classmethod
+    def from_row(cls, row: Mapping[str, Any]) -> "ValidatedPattern":
+        ci = ConfidenceInterval(
+            low=_get(row, "ci_low"), high=_get(row, "ci_high"), width=_get(row, "ci_width"),
+            quality=_get(row, "ci_quality"),
+        )
+        sig = Significance(
+            p_value=_get(row, "p_value"), z_score=_get(row, "z_score"),
+            baseline=_get(row, "baseline"), significant=bool(_get(row, "significant", 0)),
+        )
+        return cls(
+            pattern_key=_get(row, "pattern_key"), learning_version=_get(row, "learning_version"),
+            dataset_version=_get(row, "dataset_version"), pattern_type=_get(row, "pattern_type"),
+            grouping_key=_get(row, "grouping_key"), grouping_value=_get(row, "grouping_value"),
+            sample_size=int(_get(row, "sample_size", 0)), wins=int(_get(row, "wins", 0)),
+            losses=int(_get(row, "losses", 0)), win_rate=_get(row, "win_rate"),
+            loss_rate=_get(row, "loss_rate"), average_r=_get(row, "average_r"),
+            expectancy=_get(row, "expectancy"), profit_factor=_get(row, "profit_factor"),
+            max_drawdown_r=_get(row, "max_drawdown_r"), avg_holding_bars=_get(row, "avg_holding_bars"),
+            confidence_interval=ci, significance=sig,
+            correction_method=_get(row, "correction_method"),
+            correction_significant=bool(_get(row, "correction_significant", 0)),
+            consistency_score=_get(row, "consistency_score"),
+            status=LearningStatus(_get(row, "status", LearningStatus.HYPOTHESIS.value)),
+            evidence_count=int(_get(row, "evidence_count", 0)), run_id=_get(row, "run_id"),
+            created_at=_get(row, "created_at"),
+        )
+
+
+@dataclass(frozen=True)
+class ValidationResult:
+    """The result of one statistical-validation pass over a set of candidate patterns.
+
+    Deterministic: identical dataset + patterns + config always yield identical validated
+    patterns and the same ``checksum``. ``hypotheses_tested`` records how many patterns entered
+    the family (the count the multiple-comparison correction accounts for)."""
+
+    validated_patterns: tuple[ValidatedPattern, ...]
+    status: LearningStatus              # run-level: VALIDATED / HYPOTHESIS / INSUFFICIENT_DATA
+    corpus_size: int
+    validated_count: int
+    hypothesis_count: int
+    insufficient_count: int
+    hypotheses_tested: int
+    correction_method: str
+    min_sample: int
+    alpha: float
+    baseline: float
+    learning_version: str
+    dataset_version: str
+    checksum: str
+    validation_duration_ms: float
+    created_at: str = field(default_factory=_utc_now_iso)
+
+    @property
+    def pattern_count(self) -> int:
+        return len(self.validated_patterns)

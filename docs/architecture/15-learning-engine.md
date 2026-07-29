@@ -60,6 +60,42 @@ transform that groups the Learning Dataset into deterministic **candidate patter
 - **Storage foundation:** append-only migration `0007` adds `learning_patterns` (**metadata
   only** — no stat columns); its own table, no Sprint 1–3 table changed. 25 tests.
 
+**M3 — Statistical Validation Engine** (`app/learning/statistics.py`): the **first** milestone
+that performs statistics. A **pure, read-only** transform that takes the candidate patterns (M2)
++ the Learning Dataset (M1) and classifies each pattern `VALIDATED` / `HYPOTHESIS` /
+`INSUFFICIENT_DATA`. **No recommendations, no REST API, no GPT** (later milestones); imports
+neither engine.
+- **Reuse, not reinvent (§4.4).** The base rollups (win rate, loss rate, avg R, expectancy,
+  profit factor, max drawdown, avg holding) are computed by the **same Sprint 2 aggregate math**
+  (`app.memory.aggregates._metrics`, via lightweight record adapters) that fills
+  `memory_aggregates` — so a validated pattern's figures **cannot drift** from the stored
+  aggregates (a regression test asserts they match exactly). This milestone **adds** only what the
+  aggregates lack.
+- **Honesty gates.** Every rate carries a **95% Wilson confidence interval** (reported with a
+  width + coarse `HIGH`/`MODERATE`/`LOW` quality — never a point estimate alone); a two-sided
+  proportion **significance** test vs a baseline (default a coin flip, 0.5); and a
+  **multiple-comparison correction** applied across the whole family of tested patterns
+  (Benjamini–Hochberg default, Bonferroni, or none — an **extensible registry**; the strategy is
+  recorded on the run). A pattern is `VALIDATED` **only** when it clears `min_sample`, is
+  significant **after** correction, **and** its interval excludes the baseline; below the sample
+  floor → `INSUFFICIENT_DATA`; otherwise `HYPOTHESIS`. **Weak evidence is never promoted.**
+- **`ValidatedPattern`** (the statistical result): stable `pattern_key` (= the deterministic M2
+  identity), versions, sample size, wins/losses, win/loss rate, avg R, expectancy, profit factor,
+  drawdown, holding, the `ConfidenceInterval`, the `Significance` (raw p-value/z + verdict), the
+  correction method + corrected verdict, a **consistency score** (win-rate stability across
+  chronological sub-periods — flags curve-fit-to-one-window patterns), status, and
+  `evidence_count`. A thin/empty corpus → run status `INSUFFICIENT_DATA` (fabricates nothing).
+- **Deterministic + thread-safe + idempotent:** identical dataset + patterns + config → identical
+  results (SHA-256 checksum over the ordered validated patterns). Structured logging of validation
+  duration, validated/rejected counts, correction, thresholds, corpus size — never reasoning,
+  vectors, or embeddings.
+- **Storage foundation:** append-only migration `0008` adds `learning_pattern_stats` (statistics +
+  CI + significance + correction columns); its own table, no Sprint 1–3 table changed. The
+  validator is **read-only** (writes nothing yet). 28 tests (primitives, determinism, CI,
+  significance, correction strategies, sample floor, hypothesis-vs-validated, insufficient/empty,
+  corrupted/malformed/version, concurrency, **regression vs Sprint 2 aggregates**, migration +
+  round-trip, no-writes, no-engine-imports).
+
 ---
 
 ## (A) Meta-model retrainer — status: 🟡 Built, waiting on data — `app/training/meta.py`,
