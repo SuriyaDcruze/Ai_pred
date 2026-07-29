@@ -48,7 +48,7 @@ The individual volumes are authored on approval, in the priority agreed below.
 | 12 | [**Risk Engine**](12-risk-engine.md) | ATR stops, R-multiples, position sizing, portfolio risk | 🟢 built |
 | 13 | [**Historical Memory**](13-historical-memory.md) | Store every prediction+outcome; foundation for learning | 🟢 **Sprint 2 COMPLETE** (`v0.2.0`) — store, builder, retrieval, API |
 | 14 | [**Similarity Engine**](14-similarity-engine.md) | "I've seen this setup before" (explainability) | 🟢 **Sprint 3 COMPLETE** (`v0.3.0`) — feature vectors, embeddings, cosine k-NN, `/memory/similar*` API |
-| 15 | [**Learning Engine**](15-learning-engine.md) | Meta-model + nightly champion/challenger retrain | 🟡 built, needs data |
+| 15 | [**Learning Engine**](15-learning-engine.md) | Behavioural analytics over history (Sprint 4) · + meta-model retrainer | 🟢 **Sprint 4 COMPLETE** (`v0.4.0`) — dataset, patterns, statistics, recommendations, `/learning/*`; retrainer 🟡 needs data |
 | 16 | [**User Profile**](16-user-profile.md) | Preferences, watchlists, risk appetite, auth identity | 🔴 not built |
 | 17 | [**Paper Trading**](17-paper-trading.md) | Log recommendations, score vs real future price | 🟡 tracker exists |
 | 18 | [**Forward Testing**](18-forward-testing.md) ⭐ | The live-proof engine — turn backtest edge into a record | 🟢 **Sprint 1 COMPLETE** (`v0.1.0-forward-testing`) — engine, API, dashboard, docs |
@@ -88,11 +88,13 @@ Feature vectors → embeddings → cosine k-NN → retrieval integration → `/m
 Closure: [Sprint 3 plan](sprints/sprint-03-similarity-plan.md) · [Sprint 3 report](../sprints/sprint-03-report.md)
 · [Release notes](../releases/v0.3.0-similarity-engine.md) · [ADRs 0012–0016](adr/).
 
-## 📐 Next: Sprint 4 — Learning Engine (Volume 15, design, awaiting approval)
-[Sprint 4 plan](sprints/sprint-04-learning-plan.md) — **descriptive, honesty-gated analytics**
-over Historical Memory (patterns + statistics + evidence-bound recommendations); **no training,
-no prediction** (distinct from the legacy meta-model retrainer). **Planning only; no
-implementation until approved** — see the two reviewer decisions in §0.
+## 🏁 Delivered: Sprint 4 — Learning Engine (`v0.4.0-learning-engine`, COMPLETE)
+The Behavioural Learning Engine is **built**: dataset → pattern extraction → statistical
+validation → evidence-bound recommendations → `/learning/*` API. **Descriptive, honesty-gated
+analytics — no training, no prediction, no advice** (distinct from the legacy meta-model
+retrainer, ADR 0017). Closure: [Sprint 4 plan](sprints/sprint-04-learning-plan.md) · [Sprint 4
+report](../sprints/sprint-04-report.md) · [Release notes](../releases/v0.4.0-learning-engine.md)
+· [ADRs 0017–0022](adr/).
 
 ## ✅ Book status: all 28 volumes authored (v1.0) · Review complete → v1.1 proposed
 

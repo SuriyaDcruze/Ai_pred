@@ -6,11 +6,11 @@
 > Process (identical to Sprints 1–3): **Architecture → Sprint Plan → Milestones → Review →
 > Approval → Implementation.** One milestone at a time with a review gate after each.
 >
-> **Status:** 🔨 Approved — implementing milestone by milestone. Both §0 reviewer decisions
-> confirmed (separate subsystem; descriptive-only, threshold-gated).
-> **M1 (Learning Dataset Builder): ✅ done. M2 (Pattern Extraction): ✅ done. M3 (Statistical
-> Validation): ✅ done. M4 (Recommendation Engine): ✅ done. M5 (REST API): ✅ done — awaiting
-> review.** M6 pending.
+> **Status:** ✅ **SPRINT 4 COMPLETE** — frozen at `v0.4.0`, tag `v0.4.0-learning-engine`. Both §0
+> reviewer decisions confirmed (separate subsystem; descriptive-only, threshold-gated).
+> **M1 ✅ · M2 ✅ · M3 ✅ · M4 ✅ · M5 ✅ · M6 (docs & freeze) ✅ — all done.** See the
+> [Sprint 4 report](../../sprints/sprint-04-report.md), [release notes](../../releases/v0.4.0-learning-engine.md),
+> and [ADRs 0017–0022](../adr/).
 >
 > **Sprint sequence:** Sprint 1 (Forward Testing `v0.1.0`) → Sprint 2 (Historical Memory
 > `v0.2.0`) → Sprint 3 (Similarity Engine `v0.3.0`) → **Sprint 4 (Learning Engine `v0.4.0`)**.
@@ -191,7 +191,7 @@ truth.
 | **M3** ✅ | Statistical Validation | For each candidate: win rate, expectancy, avg R, drawdown, consistency + **confidence interval** + **significance** + **multiple-comparison correction**; **reuse `memory_aggregates`**. Emit only patterns clearing `min_sample` **and** a meaningful CI. | **done:** `app/learning/statistics.py`; migration `0008 learning_pattern_stats`; 29 tests (644 total). Reuses the Sprint 2 `_metrics` (regression-asserted); Wilson CI + two-proportion z-test + BH/Bonferroni (extensible); `VALIDATED`/`HYPOTHESIS`/`INSUFFICIENT_DATA`. Read-only; only `migrations.py` appended. |
 | **M4** ✅ | Recommendation Engine | Turn **validated** patterns into **evidence-bound descriptive** recommendation objects (supporting trades + stats + confidence + sample size + **known limitations**). **Never** unsupported advice; framed as hypotheses for Forward Testing, not actions. | **done:** `app/learning/recommendations.py`; migration `0009 learning_recommendations`; 21 tests. Read-only; evidence ids sourced from M2 candidates (M3 untouched); communication-confidence rubric independent of significance; no-advice asserted. Only `migrations.py` appended. |
 | **M5** ✅ | REST API | `/learning/*` thin transport (summaries, recommendations, statistics, confidence, evidence); validation; honest sample size; 400/404/409/503 taxonomy. | **done:** `app/api/learning.py` (7 endpoints); 24 tests. Thin transport — composes M1–M4, no analytics of its own; filtering + deterministic pagination; 400/404/409/422/503; metadata envelope + checksums. Only `api/main.py` mount touched (1 line). |
-| **M6** | Documentation & freeze | Vol 15 as-built (disambiguated from the retrainer), ADRs, Sprint 4 report, release notes `v0.4.0`, version bump, tag. | docs |
+| **M6** ✅ | Documentation & freeze | Vol 15 as-built (disambiguated from the retrainer), ADRs, Sprint 4 report, release notes `v0.4.0`, version bump, tag. | **done:** Vol 15 finalised (data-flow + read-only/versioning/freeze); ADRs `0017`–`0022`; [Sprint 4 report](../../sprints/sprint-04-report.md); [release notes `v0.4.0`](../../releases/v0.4.0-learning-engine.md) + compatibility matrix; `app/__init__.py` → `0.4.0`; architecture README updated; tag `v0.4.0-learning-engine`. |
 
 Each milestone: implement only that milestone → full suite green → prove Sprints 1–3 + engines
 untouched → update docs in the same commit (docs-before-push) → commit + push → **STOP for

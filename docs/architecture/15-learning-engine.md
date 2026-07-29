@@ -10,11 +10,49 @@ model that genuinely beats the incumbent.
 > not conflate them:
 > - **(A) Meta-model retrainer** — `app/training/*` (below). **Trains** a meta-model via the
 >   champion/challenger promotion pipeline. 🟡 Built, waiting on data.
-> - **(B) Behavioural Learning Engine** — `app/learning/` (Sprint 4, `v0.4.0`, in progress).
+> - **(B) Behavioural Learning Engine** — `app/learning/` (**Sprint 4 COMPLETE, `v0.4.0`**).
 >   **Descriptive analytics** over completed Historical Memory — **no training, no inference,
 >   read-only**. Surfaces statistically honest, evidence-bound observations; says
 >   `INSUFFICIENT_DATA` where history is thin. See
->   `sprints/sprint-04-learning-plan.md`.
+>   `sprints/sprint-04-learning-plan.md`, [Sprint 4 report](../sprints/sprint-04-report.md),
+>   [release notes](../releases/v0.4.0-learning-engine.md), and [ADRs 0017–0022](adr/).
+
+### (B) Behavioural Learning Engine — Sprint 4 at a glance (`v0.4.0`, frozen)
+**Data flow (component boundaries):**
+```
+  Forward Testing → Prediction / Outcome / Risk (immutable) → HISTORICAL MEMORY → SIMILARITY
+        │   completed decisions + memory_aggregates  (read-only; imports neither engine)
+        ▼
+  ┌──────────────────────────  BEHAVIOURAL LEARNING ENGINE (app/learning/)  ─────────────────────┐
+  │  Dataset Builder (M1)  →  Pattern Extraction (M2)  →  Statistical Validation (M3)  →         │
+  │  Recommendation Engine (M4)                                                                  │
+  │     learning_runs        learning_patterns          learning_pattern_stats                   │
+  │                                                     learning_recommendations                 │
+  └──────────────────────────────────────────────────┬──────────────────────────────────────────┘
+                                                      ▼
+                          /learning/* REST API (M5, app/api/learning.py — thin transport)
+                                                      ▼
+                          Decision Intelligence / GPT assistant (Vol 07 — explains, never predicts)
+```
+**Read-only guarantees:** imports neither the Prediction nor the Outcome engine (AST-guarded);
+reads Historical Memory via `RetrievalEngine`/`MemoryStore` + the Outcome Engine's already-stored
+outputs verbatim; writes **only** its own four satellite tables (and, through M5, writes nothing);
+changes **no** Sprint 1–3 table; adds only append-only migrations. (ADR 0017/0018.)
+
+**Storage (all in `prediction_history.db`, append-only, derived + rebuildable):** `learning_runs`
+(`0006`), `learning_patterns` (`0007`), `learning_pattern_stats` (`0008`),
+`learning_recommendations` (`0009`) — each its own table; no prior table changed.
+
+**Versioning (three independent stamps, ADR 0022):** `learning_version = lrn-1` (analysis method) ·
+`dataset_version = lds-1` (record shape, exposed as the API `schema_version`) · API
+`schema_version = 1` (HTTP payload shape). Determinism is proved by SHA-256 checksums; the release
+is `v0.4.0`, tag `v0.4.0-learning-engine`. See the [compatibility matrix](../releases/v0.4.0-learning-engine.md#compatibility-matrix).
+
+**Honesty:** nothing below `min_sample`; every rate carries a 95% Wilson interval; multiple
+comparisons corrected; recommendations are descriptive hypotheses with mandatory limitations.
+**No predictive edge is claimed** — consistent with `docs/RESULTS.md`, the only verified edge is
+the Outcome Engine (backtest-only). On the current near-empty corpus the output is
+`INSUFFICIENT_DATA` everywhere — a *pass*.
 
 ### (B) Behavioural Learning Engine — as built (Sprint 4 · M1: Learning Dataset Builder)
 `app/learning/{models,dataset}.py` — a **pure, read-only, deterministic** transform from

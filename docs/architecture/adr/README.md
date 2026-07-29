@@ -26,6 +26,12 @@ Format: [Michael Nygard's template](https://cognitect.com/blog/2011/11/15/docume
 | [0014](0014-similarity-engine-architecture.md) | Similarity Engine architecture (filter-first brute-force cosine) | Accepted | 3 |
 | [0015](0015-retrieval-integration-optional-di.md) | Retrieval integration via optional DI | Accepted | 3 |
 | [0016](0016-similarity-rest-api.md) | Similarity REST API (thin transport, single route owner) | Accepted | 3 |
+| [0017](0017-behavioural-learning-engine-separation.md) | Behavioural Learning Engine, separate from the meta-model retrainer | Accepted | 4 |
+| [0018](0018-learning-engine-read-only-guarantee.md) | The Learning Engine is read-only over everything upstream | Accepted | 4 |
+| [0019](0019-statistical-honesty-model.md) | Statistical honesty model (threshold-gated, interval-first, correction-aware) | Accepted | 4 |
+| [0020](0020-recommendation-philosophy-descriptive-evidence-bound.md) | Recommendation philosophy: descriptive, evidence-bound, never advice | Accepted | 4 |
+| [0021](0021-learning-rest-api-thin-stateless.md) | Learning REST API: thin transport, stateless-deterministic | Accepted | 4 |
+| [0022](0022-learning-versioning-and-append-only-storage.md) | Learning versioning & append-only satellite storage | Accepted | 4 |
 
 Related: the full Architecture Book lives in [../](../) (Volumes 00–28) and the
 Architecture Review in [../ARCHITECTURE-REVIEW-v1.md](../ARCHITECTURE-REVIEW-v1.md).
