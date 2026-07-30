@@ -11,9 +11,13 @@ predicts or advises; it orchestrates existing deterministic capabilities.
 - **M2 — the Tool Registry (`tool-1`, metadata only):** `ToolDefinition`, `ToolSchema`,
   `ToolParameter`, `ToolRegistry`, the `ToolCategory` / `ToolCapability` / `ToolAvailability` enums,
   and the read-only `default_registry()` catalog.
+- **M3 — the deterministic Planner (`plan-1`):** `Planner`, `PlanningResult`, `PlanningRule`,
+  `PlanStepSpec`, the `PlanningStatus` / `PlannerErrorCategory` enums, and `DEFAULT_PLANNING_RULES`.
+  Turns an `AgentTask` into an `AgentPlan` using only registry metadata — no execution, permissions,
+  engine calls, or LLM.
 
 All deterministic (ids + checksums) and serialization round-trip. **No execution, routing, LLM,
-permissions logic, or planning** (those are later milestones). Imports nothing from any engine.
+permissions logic** (those are later milestones). Imports nothing from any engine.
 """
 
 from __future__ import annotations
@@ -59,6 +63,17 @@ from app.agent.tools import (
     UnsupportedToolRegistryVersionError,
     default_registry,
     default_tool_definitions,
+)
+from app.agent.planner import (
+    DEFAULT_PLANNING_RULES,
+    PLANNER_VERSION,
+    PlannerError,
+    PlannerErrorCategory,
+    Planner,
+    PlanningResult,
+    PlanningRule,
+    PlanningStatus,
+    PlanStepSpec,
 )
 
 __all__ = [
@@ -108,4 +123,14 @@ __all__ = [
     "DuplicateToolError",
     "ToolNotFoundError",
     "UnsupportedToolRegistryVersionError",
+    # --- M3: Planner ---
+    "PLANNER_VERSION",
+    "Planner",
+    "PlanningResult",
+    "PlanningRule",
+    "PlanStepSpec",
+    "PlanningStatus",
+    "PlannerErrorCategory",
+    "PlannerError",
+    "DEFAULT_PLANNING_RULES",
 ]

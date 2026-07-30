@@ -4,7 +4,8 @@
 > Implementation, one milestone at a time with a review gate after each.
 >
 > **Status:** 🔨 **In progress — implementing milestone by milestone.** **M1 (Agent Domain Model)
-> ✅ · M2 (Tool Registry) ✅ — awaiting M2 review.** Later milestones defined per their milestone specs.
+> ✅ · M2 (Tool Registry) ✅ · M3 (Planner) ✅ — awaiting M3 review.** Later milestones defined per
+> their milestone specs.
 >
 > **Sprint sequence:** … Sprint 5 (Decision Intelligence `v0.5.0`) → Sprint 6 (Conversation
 > Intelligence `v0.6.0`) → **Sprint 7 (Agent Engine `v0.7.0`, proposed)**.
@@ -41,15 +42,16 @@ the Prediction nor the Outcome engine (AST-guarded); never predicts or advises.
 |---|---|---|---|
 | **M1** ✅ | Agent Domain Model | `Agent`, `AgentSession` (+ lifecycle state machine), `AgentTask`, `AgentPlan`, `ExecutionStep`, `ToolCall`, `ToolResult`, `PermissionRequest`, `AuditEntry`; deterministic ids/checksums; serialization; versioning. **No execution/tools/routing/LLM/permissions/planning.** | **done:** `app/agent/{models,__init__}.py`; 17 tests. `agt-1`; lifecycle `CREATED`/`PLANNING`/`WAITING_FOR_APPROVAL`/`EXECUTING`/`COMPLETED`/`FAILED`/`CANCELLED` (validated transitions); immutable auto-sequenced audit; deterministic ids + SHA-256 checksums; frozen functional-update session; serialization round-trip. Imports no engine (AST). No Sprint 1–6 file touched. |
 | **M2** ✅ | Tool Registry | tool definition + schema, categories, discovery, validation, serialization, versioning (`tool-1`). **Metadata only — no execution/planning/permissions/engine calls/LLM/REST.** | **done:** `app/agent/tools.py`; 15 tests. `tool-1`; `ToolDefinition` (canonical immutable `<engine>.<action>` id + SHA-256 checksum), `ToolSchema`/`ToolParameter` (unique-name + typed integrity), `ToolCategory`/`ToolCapability`/`ToolAvailability` enums (FUTURE_EXTENSIONS bucket = extensible), immutable functional `ToolRegistry` (register / duplicate-reject / lookup by id + category + engine / deterministic order by id / discovery / round-trip). WRITE ⇒ permission_required invariant. Read-only `default_registry()` catalog (7 tools over the existing engines). Imports no engine (AST) — only the M1 primitives. No Sprint 1–6 / M1 file touched. |
-| **M3+** | *(per forthcoming milestone specs)* | Anticipated concerns: **Planner** (deterministic plan from a task), **Permission Engine** (approval gate), **Executor** (permissioned, audited tool execution), **Audit store**, **LLM planning adapter**, **REST API**, **docs & freeze**. Each defined + gated at its milestone. | pending |
+| **M3** ✅ | Planner | deterministic `AgentTask` → `AgentPlan` from registry metadata only; tool selection, dependency resolution, ordering, validation, serialization, versioning (`plan-1`). **No execution/permissions/engine calls/LLM/REST.** | **done:** `app/agent/planner.py`; 16 tests. `plan-1`; rule-based selection (explicit `goal` / `requested_tools` / deterministic keyword scan; ambiguity → `UNSUPPORTED_TASK`); registry-metadata-only tool resolution (existence + availability); layered cycle-detecting topological ordering; `ExecutionStep` I/O derived from tool schemas; error taxonomy `UNSUPPORTED_TASK`/`TOOL_NOT_FOUND`/`TOOL_UNAVAILABLE`/`INVALID_PLAN`/`DEPENDENCY_ERROR`; `PlanningResult` (`plan()` captures / `plan_or_raise()` raises); deterministic checksums + round-trip; read-only `DEFAULT_PLANNING_RULES`. Imports no engine (AST) — only M1 + M2. No Sprint 1–6 / M1 / M2 file touched. |
+| **M4+** | *(per forthcoming milestone specs)* | Anticipated concerns: **Permission Engine** (approval gate), **Executor** (permissioned, audited tool execution), **Audit store**, **LLM planning adapter**, **REST API**, **docs & freeze**. Each defined + gated at its milestone. | pending |
 
 Each milestone: implement only that milestone → full suite green → prove Sprints 1–6 + engines
 untouched → docs-before-push → commit + push → **STOP for review**.
 
-## 3. Constraints (M1–M2)
-Domain models (M1) and tool **metadata** (M2) only — **no** tool execution, routes, LLM calls,
-permission logic, planning, or engine invocation. Frozen, deterministic, serializable. Sprint 1–6 +
-earlier M provably unchanged each milestone.
+## 3. Constraints (M1–M3)
+Domain models (M1), tool **metadata** (M2), and deterministic **planning** (M3) only — **no** tool
+execution, routes, LLM calls, permission logic, or engine invocation. Frozen, deterministic,
+serializable. Sprint 1–6 + earlier M provably unchanged each milestone.
 
 **Out of scope (this sprint, unless a milestone spec says otherwise):** any prediction/inference/
 training; buy/sell advice; auto-executing state-changing actions without approval; a UI; Postgres.
