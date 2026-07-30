@@ -15,9 +15,14 @@ predicts or advises; it orchestrates existing deterministic capabilities.
   `PlanStepSpec`, the `PlanningStatus` / `PlannerErrorCategory` enums, and `DEFAULT_PLANNING_RULES`.
   Turns an `AgentTask` into an `AgentPlan` using only registry metadata — no execution, permissions,
   engine calls, or LLM.
+- **M4 — the deterministic Permission Engine (`perm-1`):** `PermissionEngine`, `PermissionPolicy`,
+  `PermissionRule`, `AuthorizationResult`, `StepAuthorization`, the `PermissionLevel` /
+  `PermissionErrorCategory` enums, and `default_policy()`. Authorizes each plan step
+  (ALLOWED / APPROVAL_REQUIRED / DENIED) from tool metadata + policy, emitting `PermissionRequest`s —
+  no execution, engine calls, state mutation, or LLM.
 
-All deterministic (ids + checksums) and serialization round-trip. **No execution, routing, LLM,
-permissions logic** (those are later milestones). Imports nothing from any engine.
+All deterministic (ids + checksums) and serialization round-trip. **No execution, routing, LLM**
+(those are later milestones). Imports nothing from any engine.
 """
 
 from __future__ import annotations
@@ -74,6 +79,18 @@ from app.agent.planner import (
     PlanningRule,
     PlanningStatus,
     PlanStepSpec,
+)
+from app.agent.permissions import (
+    PERMISSION_ENGINE_VERSION,
+    AuthorizationResult,
+    PermissionEngine,
+    PermissionEngineError,
+    PermissionErrorCategory,
+    PermissionLevel,
+    PermissionPolicy,
+    PermissionRule,
+    StepAuthorization,
+    default_policy,
 )
 
 __all__ = [
@@ -133,4 +150,15 @@ __all__ = [
     "PlannerErrorCategory",
     "PlannerError",
     "DEFAULT_PLANNING_RULES",
+    # --- M4: Permission Engine ---
+    "PERMISSION_ENGINE_VERSION",
+    "PermissionEngine",
+    "PermissionPolicy",
+    "PermissionRule",
+    "AuthorizationResult",
+    "StepAuthorization",
+    "PermissionLevel",
+    "PermissionErrorCategory",
+    "PermissionEngineError",
+    "default_policy",
 ]
