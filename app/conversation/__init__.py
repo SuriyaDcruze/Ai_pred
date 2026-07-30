@@ -11,12 +11,11 @@ exist it says so (`INSUFFICIENT_DATA` / `NOT_AVAILABLE` / `NOT_SUPPORTED`) rathe
 pre-Decision-Intelligence rule-based + optional-LLM layer — a separate concern this engine does not
 modify.
 
-**Current state (Milestones 1–5):** the **conversation domain model** (M1), the **Intent Detection
-Engine** (M2), the **Retrieval Orchestrator** (M3), the **Prompt Builder** (M4), and the
-**Conversation Engine** (M5) — a deterministic, in-memory orchestrator of sessions, multi-turn
-context, lifecycle, and follow-ups that coordinates M1–M4 (runs intent detection, drives the
-lifecycle state machine, produces an orchestration result) **without** executing retrieval, prompts,
-or an LLM. The LLM adapter and the REST API arrive in later milestones.
+**Current state (Milestones 1–6):** M1 domain model · M2 Intent Detection · M3 Retrieval
+Orchestrator · M4 Prompt Builder · M5 Conversation Engine · **M6 LLM Adapter** — a
+provider-independent infrastructure layer that takes a completed prompt and returns a normalised
+response (OpenAI / Azure / a deterministic offline stub), normalising provider errors and importing
+no LLM SDK. The REST API arrives in the final feature milestone (M7).
 """
 
 from __future__ import annotations
@@ -92,6 +91,25 @@ from app.conversation.engine import (
     OrchestrationResult,
     SessionNotFoundError,
 )
+from app.conversation.llm_adapter import (
+    LLM_ADAPTER_VERSION,
+    PROVIDER_FACTORIES,
+    EchoProvider,
+    FinishReason,
+    InvalidLLMRequestError,
+    LLMAdapter,
+    LLMAdapterError,
+    LLMError,
+    LLMErrorCategory,
+    LLMProvider,
+    LLMRequest,
+    LLMResponse,
+    OpenAIProvider,
+    ProviderNotFoundError,
+    available_providers,
+    create_adapter,
+    register_provider,
+)
 
 __all__ = [
     "CONVERSATION_VERSION",
@@ -141,6 +159,21 @@ __all__ = [
     "NextStep",
     "ENGINE_VERSION",
     "DEFAULT_CONTEXT_WINDOW",
+    # LLM adapter (M6)
+    "LLMAdapter",
+    "LLMProvider",
+    "EchoProvider",
+    "OpenAIProvider",
+    "LLMRequest",
+    "LLMResponse",
+    "LLMError",
+    "FinishReason",
+    "LLMErrorCategory",
+    "create_adapter",
+    "register_provider",
+    "available_providers",
+    "PROVIDER_FACTORIES",
+    "LLM_ADAPTER_VERSION",
     # errors
     "ConversationError",
     "InvalidMessageError",
@@ -160,4 +193,7 @@ __all__ = [
     "SessionNotFoundError",
     "InvalidTransitionError",
     "DuplicateMessageError",
+    "LLMAdapterError",
+    "InvalidLLMRequestError",
+    "ProviderNotFoundError",
 ]
