@@ -30,6 +30,7 @@ from app.api.schemas import (
     RecordCallRequest,
 )
 from app.api.forward import router as forward_router
+from app.api.intelligence import router as intelligence_router
 from app.api.learning import router as learning_router
 from app.api.memory import router as memory_router
 from app.api.similarity import router as similarity_router
@@ -115,6 +116,7 @@ app.include_router(forward_router)   # Forward Testing — /forward/* (Sprint 1 
 app.include_router(memory_router)    # Historical Memory — /memory/* (Sprint 2 · M5)
 app.include_router(similarity_router)  # Similarity — /memory/similar* (Sprint 3 · M5)
 app.include_router(learning_router)  # Behavioural Learning — /learning/* (Sprint 4 · M5)
+app.include_router(intelligence_router)  # Decision Intelligence — /intelligence/* (Sprint 5 · M5)
 
 
 def _provider(symbol: str):
