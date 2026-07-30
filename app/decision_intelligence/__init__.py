@@ -11,12 +11,12 @@ modifies nothing upstream. Where history is thin it degrades gracefully and says
 **Distinct from** the legacy live-analysis intelligence (`app/intelligence.py`, `app/sector.py`,
 Vol 08), which computes a fresh view from market data + the models directly — a separate concern.
 
-**Current state (Milestones 1–3):** the **domain model & composition contract** (M1), the
-**Composition Engine** (M2) — a deterministic, read-only orchestration layer that assembles the
-object from the four engines' existing outputs (recomputing nothing) — and the **Evidence &
-Explanation Engine** (M3): a deterministic evidence graph + provenance map + For/Against +
-missing-evidence + a descriptive explanation over a composed object. Composite confidence and the
-REST API arrive in later milestones.
+**Current state (Milestones 1–4):** the **domain model & composition contract** (M1), the
+**Composition Engine** (M2), the **Evidence & Explanation Engine** (M3), and the **Composite
+Confidence & Prioritisation Engine** (M4): a deterministic, read-only **evidence-quality** indicator
+(how trustworthy/complete/consistent the assembled evidence is — **never** a probability of success
+or a trading signal) + conflict detection + a prioritisation score that organises objects by
+evidence strength only. The REST API arrives in a later milestone.
 """
 
 from __future__ import annotations
@@ -69,6 +69,20 @@ from app.decision_intelligence.evidence import (
     OrphanedEvidenceError,
     Stance,
 )
+from app.decision_intelligence.confidence import (
+    CompositeConfidence,
+    ConfidenceEngine,
+    ConfidenceError,
+    ConfidenceFactor,
+    ConfidenceLevel,
+    Conflict,
+    ConflictKind,
+    EvidenceQuality,
+    InvalidConfidenceError,
+    Penalty,
+    Strength,
+    prioritise,
+)
 
 __all__ = [
     "DECISION_INTELLIGENCE_VERSION",
@@ -104,6 +118,17 @@ __all__ = [
     "MissingEvidenceItem",
     "Stance",
     "MissingReason",
+    # composite confidence & prioritisation (M4)
+    "ConfidenceEngine",
+    "CompositeConfidence",
+    "ConfidenceFactor",
+    "ConfidenceLevel",
+    "Conflict",
+    "ConflictKind",
+    "Penalty",
+    "Strength",
+    "EvidenceQuality",
+    "prioritise",
     # errors
     "DecisionIntelligenceError",
     "CompositionError",
@@ -111,6 +136,8 @@ __all__ = [
     "ExplanationError",
     "OrphanedEvidenceError",
     "DuplicateEvidenceError",
+    "ConfidenceError",
+    "InvalidConfidenceError",
     "InvalidStateError",
     "InvalidProvenanceError",
     "InvalidComponentError",
