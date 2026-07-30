@@ -4,7 +4,7 @@
 > Implementation, one milestone at a time with a review gate after each.
 >
 > **Status:** 🔨 **Approved — implementing milestone by milestone.** **M1 (Conversation Domain
-> Model): ✅ done — awaiting review.** M2–M8 pending.
+> Model): ✅ done. M2 (Intent Detection): ✅ done — awaiting review.** M3–M8 pending.
 >
 > **Sprint sequence:** Sprint 1 (Forward Testing `v0.1.0`) → Sprint 2 (Historical Memory `v0.2.0`)
 > → Sprint 3 (Similarity `v0.3.0`) → Sprint 4 (Learning `v0.4.0`) → Sprint 5 (Decision Intelligence
@@ -52,7 +52,7 @@ thin router at M7). Read-only; no writes to any prior table.
 | M | Title | Scope | Status |
 |---|---|---|---|
 | **M1** ✅ | Conversation Domain Model | messages, sessions, conversation context, citations, metadata, serialization, versioning. **No GPT/retrieval/API/prompts.** | **done:** `app/conversation/{models,__init__}.py`; 19 tests. `cnv-1`; `Role`/`ConversationStatus`/`Availability` enums; `Citation`; deterministic message ids + SHA-256 session checksum; frozen functional-update sessions; serialization round-trip. Imports no engine (AST). No Sprint 1–5 file touched. |
-| **M2** | Intent Detection | deterministic intent classification (explain prediction / show evidence / why confidence / historical / similar / learning summary / health / version). No LLM reasoning. | pending |
+| **M2** ✅ | Intent Detection | deterministic intent classification (explain prediction / show evidence / why confidence / historical / similar / learning summary / decision summary / health / version / help / unknown). No LLM reasoning. | **done:** `app/conversation/intent.py`; 16 tests. `int-1`; rule-based classifier (phrase/keyword/synonym tiers, configurable priority); extensible `INTENT_REGISTRY`; deterministic entity extraction (prediction_id/symbol) + validation (required subject); classification confidence (rule-match strength, **not** DI confidence); serialization. No LLM/embeddings/retrieval; imports no engine (AST). No Sprint 1–5 / M1 file touched. |
 | **M3** | Retrieval Orchestrator | invoke the Decision Intelligence API; retrieve evidence/explanation/confidence; merge context; build the conversation payload. No generation, no prompts. | pending |
 | **M4** | Prompt Builder | deterministic system/instruction prompt + retrieved context + citation formatting + token budgeting + context ordering. Never invents information. | pending |
 | **M5** | Conversation Engine | session handling, memory, follow-ups, multi-turn, context persistence, lifecycle. | pending |

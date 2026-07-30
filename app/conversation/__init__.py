@@ -11,10 +11,10 @@ exist it says so (`INSUFFICIENT_DATA` / `NOT_AVAILABLE` / `NOT_SUPPORTED`) rathe
 pre-Decision-Intelligence rule-based + optional-LLM layer — a separate concern this engine does not
 modify.
 
-**Current state (Milestone 1):** the **conversation domain model** only — messages, sessions,
-conversation context, citations, metadata, serialization, and versioning. Intent detection,
-retrieval, prompt building, the conversation engine, the LLM adapter, and the REST API arrive in
-later milestones.
+**Current state (Milestones 1–2):** the **conversation domain model** (M1) and the **Intent
+Detection Engine** (M2) — deterministic, rule-based classification of a user request into a
+well-defined intent (no LLM, no embeddings, no retrieval). Retrieval, prompt building, the
+conversation engine, the LLM adapter, and the REST API arrive in later milestones.
 """
 
 from __future__ import annotations
@@ -34,6 +34,21 @@ from app.conversation.models import (
     SchemaConsistencyError,
     UnsupportedVersionError,
 )
+from app.conversation.intent import (
+    INTENT_REGISTRY,
+    INTENT_VERSION,
+    IntentClassification,
+    IntentClassifier,
+    IntentError,
+    IntentSpec,
+    IntentValidation,
+    InvalidIntentInputError,
+    Intent,
+    UnknownIntentSpecError,
+    available_intents,
+    extract_entities,
+    spec_for,
+)
 
 __all__ = [
     "CONVERSATION_VERSION",
@@ -44,10 +59,24 @@ __all__ = [
     "Message",
     "ConversationContext",
     "ConversationSession",
+    # intent detection (M2)
+    "Intent",
+    "IntentSpec",
+    "IntentClassifier",
+    "IntentClassification",
+    "IntentValidation",
+    "INTENT_REGISTRY",
+    "INTENT_VERSION",
+    "available_intents",
+    "spec_for",
+    "extract_entities",
     # errors
     "ConversationError",
     "InvalidMessageError",
     "InvalidSessionError",
     "UnsupportedVersionError",
     "SchemaConsistencyError",
+    "IntentError",
+    "InvalidIntentInputError",
+    "UnknownIntentSpecError",
 ]
