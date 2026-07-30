@@ -29,6 +29,7 @@ from app.api.schemas import (
     PredictRequest,
     RecordCallRequest,
 )
+from app.api.chat import router as chat_router
 from app.api.forward import router as forward_router
 from app.api.intelligence import router as intelligence_router
 from app.api.learning import router as learning_router
@@ -117,6 +118,7 @@ app.include_router(memory_router)    # Historical Memory — /memory/* (Sprint 2
 app.include_router(similarity_router)  # Similarity — /memory/similar* (Sprint 3 · M5)
 app.include_router(learning_router)  # Behavioural Learning — /learning/* (Sprint 4 · M5)
 app.include_router(intelligence_router)  # Decision Intelligence — /intelligence/* (Sprint 5 · M5)
+app.include_router(chat_router)  # Conversation Intelligence — /chat/* sub-namespace (Sprint 6 · M7)
 
 
 def _provider(symbol: str):

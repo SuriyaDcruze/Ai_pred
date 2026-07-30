@@ -77,7 +77,7 @@ class NextStep(str, Enum):
 #: Allowed lifecycle transitions (terminal states have none). Self-loops are always allowed.
 _ALLOWED: dict[LifecycleState, set[LifecycleState]] = {
     LifecycleState.CREATED: {LifecycleState.ACTIVE, LifecycleState.WAITING_FOR_INPUT,
-                             LifecycleState.ERROR, LifecycleState.EXPIRED},
+                             LifecycleState.COMPLETED, LifecycleState.ERROR, LifecycleState.EXPIRED},
     LifecycleState.ACTIVE: {LifecycleState.WAITING_FOR_INPUT, LifecycleState.COMPLETED,
                             LifecycleState.ERROR, LifecycleState.EXPIRED},
     LifecycleState.WAITING_FOR_INPUT: {LifecycleState.ACTIVE, LifecycleState.COMPLETED,
