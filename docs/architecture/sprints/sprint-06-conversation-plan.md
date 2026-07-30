@@ -3,8 +3,8 @@
 > **Process (identical to Sprints 1–5):** Architecture → Milestones → Review → Approval →
 > Implementation, one milestone at a time with a review gate after each.
 >
-> **Status:** 🔨 **Approved — implementing milestone by milestone.** **M1 ✅ · M2 ✅ · M3 (Retrieval
-> Orchestrator): ✅ done — awaiting review.** M4–M8 pending.
+> **Status:** 🔨 **Approved — implementing milestone by milestone.** **M1 ✅ · M2 ✅ · M3 ✅ · M4
+> (Prompt Builder): ✅ done — awaiting review.** M5–M8 pending.
 >
 > **Sprint sequence:** Sprint 1 (Forward Testing `v0.1.0`) → Sprint 2 (Historical Memory `v0.2.0`)
 > → Sprint 3 (Similarity `v0.3.0`) → Sprint 4 (Learning `v0.4.0`) → Sprint 5 (Decision Intelligence
@@ -54,7 +54,7 @@ thin router at M7). Read-only; no writes to any prior table.
 | **M1** ✅ | Conversation Domain Model | messages, sessions, conversation context, citations, metadata, serialization, versioning. **No GPT/retrieval/API/prompts.** | **done:** `app/conversation/{models,__init__}.py`; 19 tests. `cnv-1`; `Role`/`ConversationStatus`/`Availability` enums; `Citation`; deterministic message ids + SHA-256 session checksum; frozen functional-update sessions; serialization round-trip. Imports no engine (AST). No Sprint 1–5 file touched. |
 | **M2** ✅ | Intent Detection | deterministic intent classification (explain prediction / show evidence / why confidence / historical / similar / learning summary / decision summary / health / version / help / unknown). No LLM reasoning. | **done:** `app/conversation/intent.py`; 16 tests. `int-1`; rule-based classifier (phrase/keyword/synonym tiers, configurable priority); extensible `INTENT_REGISTRY`; deterministic entity extraction (prediction_id/symbol) + validation (required subject); classification confidence (rule-match strength, **not** DI confidence); serialization. No LLM/embeddings/retrieval; imports no engine (AST). No Sprint 1–5 / M1 file touched. |
 | **M3** ✅ | Retrieval Orchestrator | invoke the Decision Intelligence API; retrieve evidence/explanation/confidence; merge context; build the conversation payload. No generation, no prompts. | **done:** `app/conversation/{retrieval,sources}.py`; 17 tests. `ret-1`; transport-independent `DecisionIntelligenceSource` (+ real `InProcessSource` going **through** the DI engine); intent→target routing; deterministic pipeline (validate → select → fetch once → slice → merge); availability (`AVAILABLE`/`INSUFFICIENT_DATA`/`NOT_AVAILABLE`/`NOT_SUPPORTED`/`ERROR`); context merger (ordering + provenance + citations, content verbatim); serialization (retrieved_at excluded from checksum). Core imports no engine (AST); accesses **only** Decision Intelligence. No Sprint 1–5 / M1 / M2 file touched. |
-| **M4** | Prompt Builder | deterministic system/instruction prompt + retrieved context + citation formatting + token budgeting + context ordering. Never invents information. | pending |
+| **M4** ✅ | Prompt Builder | deterministic system/instruction prompt + retrieved context + citation formatting + token budgeting + context ordering. Never invents information. | **done:** `app/conversation/prompt.py`; 15 tests. `prm-1`; fixed 10-section order; system prompt (explain-only / no-advice / no-hallucination) + per-intent instruction templates; verbatim context assembler (availability preserved); deterministic citation formatter (+ missing-citation rejection); deterministic token budget (trims lowest-priority first, always keeps system/user/citations); validation + serialization. Imports no engine/LLM (AST). No Sprint 1–5 / M1–M3 file touched. |
 | **M5** | Conversation Engine | session handling, memory, follow-ups, multi-turn, context persistence, lifecycle. | pending |
 | **M6** | LLM Adapter | provider-independent abstraction (OpenAI / Azure OpenAI / local future). | pending |
 | **M7** | REST API | thin `/chat`-style transport: chat, session, health, version. | pending |

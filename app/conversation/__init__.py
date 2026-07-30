@@ -11,12 +11,12 @@ exist it says so (`INSUFFICIENT_DATA` / `NOT_AVAILABLE` / `NOT_SUPPORTED`) rathe
 pre-Decision-Intelligence rule-based + optional-LLM layer — a separate concern this engine does not
 modify.
 
-**Current state (Milestones 1–3):** the **conversation domain model** (M1), the **Intent Detection
-Engine** (M2), and the **Retrieval Orchestrator** (M3) — a deterministic, transport-independent
-layer that retrieves Decision Intelligence data (decision / evidence / explanation / confidence /
-history / similar / learning / health / version) into a conversation payload, **through the Decision
-Intelligence Engine only** (no generation, no prompts, no LLM). Prompt building, the conversation
-engine, the LLM adapter, and the REST API arrive in later milestones.
+**Current state (Milestones 1–4):** the **conversation domain model** (M1), the **Intent Detection
+Engine** (M2), the **Retrieval Orchestrator** (M3), and the **Prompt Builder** (M4) — a
+deterministic assembler that turns a retrieval result + the user request into a fixed-order,
+validated prompt (system + instruction templates + verbatim retrieved context + citation formatting
++ token budgeting), never inventing or modifying content. The conversation engine, the LLM adapter,
+and the REST API arrive in later milestones.
 """
 
 from __future__ import annotations
@@ -65,6 +65,20 @@ from app.conversation.retrieval import (
     RetrievalTarget,
 )
 from app.conversation.sources import InProcessSource
+from app.conversation.prompt import (
+    DEFAULT_TOKEN_BUDGET,
+    INSTRUCTION_TEMPLATES,
+    PROMPT_VERSION,
+    SYSTEM_PROMPT,
+    MissingCitationError,
+    Prompt,
+    PromptBlock,
+    PromptBuilder,
+    PromptError,
+    PromptSection,
+    PromptValidationError,
+    TemplateError,
+)
 
 __all__ = [
     "CONVERSATION_VERSION",
@@ -97,6 +111,15 @@ __all__ = [
     "RetrievalResult",
     "RETRIEVAL_ROUTING",
     "RETRIEVAL_VERSION",
+    # prompt builder (M4)
+    "PromptBuilder",
+    "Prompt",
+    "PromptBlock",
+    "PromptSection",
+    "SYSTEM_PROMPT",
+    "INSTRUCTION_TEMPLATES",
+    "PROMPT_VERSION",
+    "DEFAULT_TOKEN_BUDGET",
     # errors
     "ConversationError",
     "InvalidMessageError",
@@ -108,4 +131,8 @@ __all__ = [
     "UnknownIntentSpecError",
     "RetrievalError",
     "InvalidRetrievalRequestError",
+    "PromptError",
+    "MissingCitationError",
+    "PromptValidationError",
+    "TemplateError",
 ]
