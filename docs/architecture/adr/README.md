@@ -32,6 +32,12 @@ Format: [Michael Nygard's template](https://cognitect.com/blog/2011/11/15/docume
 | [0020](0020-recommendation-philosophy-descriptive-evidence-bound.md) | Recommendation philosophy: descriptive, evidence-bound, never advice | Accepted | 4 |
 | [0021](0021-learning-rest-api-thin-stateless.md) | Learning REST API: thin transport, stateless-deterministic | Accepted | 4 |
 | [0022](0022-learning-versioning-and-append-only-storage.md) | Learning versioning & append-only satellite storage | Accepted | 4 |
+| [0023](0023-decision-intelligence-engine.md) | Decision Intelligence Engine (composition/serving layer) | Accepted | 5 |
+| [0024](0024-read-only-composition-reuse-not-recompute.md) | Read-only composition: reuse, never recompute | Accepted | 5 |
+| [0025](0025-evidence-based-explanation.md) | Evidence-based, descriptive explanation (never advice) | Accepted | 5 |
+| [0026](0026-composite-confidence-is-evidence-quality.md) | Composite confidence is an evidence-quality indicator (not a prediction) | Accepted | 5 |
+| [0027](0027-decision-intelligence-rest-thin-transport.md) | Decision Intelligence REST API: thin transport, single route owner | Accepted | 5 |
+| [0028](0028-decision-intelligence-versioning-compose-on-read.md) | Decision Intelligence versioning & compose-on-read (no persistence) | Accepted | 5 |
 
 Related: the full Architecture Book lives in [../](../) (Volumes 00–28) and the
 Architecture Review in [../ARCHITECTURE-REVIEW-v1.md](../ARCHITECTURE-REVIEW-v1.md).

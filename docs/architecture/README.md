@@ -96,6 +96,15 @@ retrainer, ADR 0017). Closure: [Sprint 4 plan](sprints/sprint-04-learning-plan.m
 report](../sprints/sprint-04-report.md) · [Release notes](../releases/v0.4.0-learning-engine.md)
 · [ADRs 0017–0022](adr/).
 
+## 🏁 Delivered: Sprint 5 — Decision Intelligence Engine (`v0.5.0-decision-intelligence`, COMPLETE)
+The **synthesis + serving** layer over the four prior engines is **built**: domain contract →
+composition → evidence & explanation → composite (evidence-quality) confidence & prioritisation →
+`/intelligence/*` API. **Read-only, deterministic, honesty-gated — reuse, never recompute; no new
+edge, no advice** (distinct from the legacy live-analysis intelligence, ADR 0023). Closure:
+[Sprint 5 plan](sprints/sprint-05-decision-intelligence-plan.md) · [Sprint 5 report](../sprints/sprint-05-report.md)
+· [As-built volume](decision-intelligence-engine.md) · [Release notes](../releases/v0.5.0-decision-intelligence.md)
+· [ADRs 0023–0028](adr/).
+
 ## ✅ Book status: all 28 volumes authored (v1.0) · Review complete → v1.1 proposed
 
 The Architecture Book is complete and is the permanent technical foundation. Per the
