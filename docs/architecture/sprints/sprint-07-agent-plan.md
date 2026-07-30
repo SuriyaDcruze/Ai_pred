@@ -4,8 +4,9 @@
 > Implementation, one milestone at a time with a review gate after each.
 >
 > **Status:** 🔨 **In progress — implementing milestone by milestone.** **M1 (Agent Domain Model)
-> ✅ · M2 (Tool Registry) ✅ · M3 (Planner) ✅ · M4 (Permission Engine) ✅ · M5 (Executor) ✅ —
-> awaiting M5 review.** Later milestones defined per their milestone specs.
+> ✅ · M2 (Tool Registry) ✅ · M3 (Planner) ✅ · M4 (Permission Engine) ✅ · M5 (Executor) ✅ ·
+> M6 (LLM Planning Adapter) ✅ — awaiting M6 review.** Later milestones defined per their milestone
+> specs.
 >
 > **Sprint sequence:** … Sprint 5 (Decision Intelligence `v0.5.0`) → Sprint 6 (Conversation
 > Intelligence `v0.6.0`) → **Sprint 7 (Agent Engine `v0.7.0`, proposed)**.
@@ -45,17 +46,18 @@ the Prediction nor the Outcome engine (AST-guarded); never predicts or advises.
 | **M3** ✅ | Planner | deterministic `AgentTask` → `AgentPlan` from registry metadata only; tool selection, dependency resolution, ordering, validation, serialization, versioning (`plan-1`). **No execution/permissions/engine calls/LLM/REST.** | **done:** `app/agent/planner.py`; 16 tests. `plan-1`; rule-based selection (explicit `goal` / `requested_tools` / deterministic keyword scan; ambiguity → `UNSUPPORTED_TASK`); registry-metadata-only tool resolution (existence + availability); layered cycle-detecting topological ordering; `ExecutionStep` I/O derived from tool schemas; error taxonomy `UNSUPPORTED_TASK`/`TOOL_NOT_FOUND`/`TOOL_UNAVAILABLE`/`INVALID_PLAN`/`DEPENDENCY_ERROR`; `PlanningResult` (`plan()` captures / `plan_or_raise()` raises); deterministic checksums + round-trip; read-only `DEFAULT_PLANNING_RULES`. Imports no engine (AST) — only M1 + M2. No Sprint 1–6 / M1 / M2 file touched. |
 | **M4** ✅ | Permission Engine | deterministic policy-driven authorization of each `AgentPlan` step (ALLOWED / APPROVAL_REQUIRED / DENIED) from tool metadata; approval-request generation, policy validation, serialization, versioning (`perm-1`). **No execution/engine calls/state mutation/LLM/REST.** | **done:** `app/agent/permissions.py`; 14 tests. `perm-1`; `PermissionLevel` (ALLOWED/APPROVAL_REQUIRED/DENIED); ordered first-match `PermissionPolicy`/`PermissionRule` (match by tool_id/category/capability) + `default_policy()`; **metadata safety floor** — a WRITE / `permission_required` tool can never be relaxed below APPROVAL_REQUIRED (policy may only tighten, via strictest-wins); per-step `StepAuthorization` + aggregate `AuthorizationResult` (overall = strictest step); deterministic `PermissionRequest` per approval (left PENDING, never auto-approved); error taxonomy `POLICY_ERROR`/`INVALID_PERMISSION`/`APPROVAL_REQUIRED`/`PERMISSION_DENIED`; `evaluate()` captures / `authorize_or_raise()` raises; checksums + round-trip. Imports no engine (AST) — only M1 + M2. No Sprint 1–6 / M1–M3 file touched. |
 | **M5** ✅ | Executor | deterministic, policy-enforced execution of an approved `AgentPlan` + `AuthorizationResult`; registry-gated tool invocation, immutable audit, result aggregation, serialization, versioning (`exec-1`). **No planning/permission-evaluation/engine access/LLM/REST.** | **done:** `app/agent/executor.py`; 16 tests. `exec-1`; runs only eligible steps in plan order (ALLOWED, or APPROVAL_REQUIRED with a **granted** `PermissionRequest`); DENIED / missing-approval / dependency-blocked steps stay unexecuted; `ExecutionOutcome` SUCCESS/SKIPPED/DENIED/FAILED (aggregate = worst); replaceable `ToolInvoker` abstraction + offline deterministic `EchoToolInvoker` (no engine); `ExecutionContext` (functional output accumulation); immutable `AuditEntry` per event (started/completed/skipped/denied/failed) in execution order; error taxonomy `EXECUTION_ERROR`/`TOOL_FAILURE`/`APPROVAL_MISSING`/`INVALID_EXECUTION`/`TOOL_UNAVAILABLE`; `execute()` captures / `execute_or_raise()` raises on missing approval; checksums + round-trip. Imports no engine (AST) — only M1 + M2 + M4. No Sprint 1–6 / M1–M4 file touched. |
-| **M6+** | *(per forthcoming milestone specs)* | Anticipated concerns: **LLM planning adapter**, **REST API**, **docs & freeze**. Each defined + gated at its milestone. | pending |
+| **M6** ✅ | LLM Planning Adapter | provider-independent, **advisory-only** structured planning suggestions validated by the deterministic Planner; provider abstraction + factory, request/response models, validation, serialization, versioning (`planllm-1`). **No executable plans/execution/permissions/engine calls/REST.** | **done:** `app/agent/planning_llm.py`; 11 tests. `planllm-1`; `PlanningLLMProvider` ABC + `PlanningLLMAdapter` (suggest/health/version); registry + `create_planning_adapter()` factory; offline deterministic `EchoPlanningProvider` + duck-typed `OpenAIPlanningProvider`/`azure_openai` (**no SDK import**); `PlanningRequest` (task + available tools + context/constraints + model config) / `PlanningResponse` (`SuggestedStep` sequence + rationale + provider-only confidence + notes); response validation (schema / tool-id validity / duplicate / unsupported / malformed dep) → normalised `INVALID_RESPONSE`; error taxonomy `INVALID_REQUEST`/`INVALID_RESPONSE`/`PROVIDER_UNAVAILABLE`/`RATE_LIMITED`/`TIMEOUT`/`INTERNAL_ERROR`; `as_requested_tools()` feeds the **Planner** (authority) — never an executable plan; checksums exclude latency; round-trip. Imports no engine and **not the Planner** (AST) — only M1 primitives. No Sprint 1–6 / M1–M5 file touched. |
+| **M7+** | *(per forthcoming milestone specs)* | Anticipated concerns: **REST API**, **docs & freeze**. Each defined + gated at its milestone. | pending |
 
 Each milestone: implement only that milestone → full suite green → prove Sprints 1–6 + engines
 untouched → docs-before-push → commit + push → **STOP for review**.
 
-## 3. Constraints (M1–M5)
+## 3. Constraints (M1–M6)
 Domain models (M1), tool **metadata** (M2), deterministic **planning** (M3), policy-driven
-**authorization** (M4), and policy-enforced **execution** (M5, via a registry-gated invoker
-abstraction — no engine access) only — **no** planning-in-executor, permission-evaluation-in-executor,
-routes, LLM calls, or direct engine invocation. Frozen, deterministic, serializable. Sprint 1–6 +
-earlier M provably unchanged each milestone.
+**authorization** (M4), policy-enforced **execution** (M5, via a registry-gated invoker abstraction —
+no engine access), and **advisory LLM planning suggestions** (M6, always validated by the
+deterministic Planner) only — **no** routes, executable-plan-from-LLM, or direct engine invocation.
+Frozen, deterministic, serializable. Sprint 1–6 + earlier M provably unchanged each milestone.
 
 **Out of scope (this sprint, unless a milestone spec says otherwise):** any prediction/inference/
 training; buy/sell advice; auto-executing state-changing actions without approval; a UI; Postgres.

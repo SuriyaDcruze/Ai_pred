@@ -25,9 +25,15 @@ predicts or advises; it orchestrates existing deterministic capabilities.
   `ExecutionOutcome` / `ExecutionErrorCategory` enums. Runs only authorized steps in plan order
   through the registry-gated invoker, records an immutable audit trail — no planning, permission
   evaluation, engine access, or LLM.
+- **M6 — the provider-independent LLM Planning Adapter (`planllm-1`):** `PlanningLLMAdapter`,
+  `PlanningLLMProvider` (+ `EchoPlanningProvider` / `OpenAIPlanningProvider`), `PlanningRequest`,
+  `PlanningResponse`, `SuggestedStep`, `create_planning_adapter()`, and the
+  `PlanningLLMErrorCategory` enum. **Advisory only** — structured planning suggestions the
+  deterministic Planner must validate; never generates an executable plan, executes, permissions, or
+  invokes an engine. No SDK import.
 
-All deterministic (ids + checksums) and serialization round-trip. **No routing / LLM** (later
-milestones). Imports nothing from any engine.
+All deterministic (ids + checksums) and serialization round-trip. **No routing** (later milestone).
+Imports nothing from any engine.
 """
 
 from __future__ import annotations
@@ -109,6 +115,27 @@ from app.agent.executor import (
     StepExecution,
     ToolInvoker,
 )
+from app.agent.planning_llm import (
+    PLANNING_ADAPTER_VERSION,
+    PLANNING_PROVIDER_FACTORIES,
+    EchoPlanningProvider,
+    InvalidPlanningRequestError,
+    InvalidPlanningResponseError,
+    OpenAIPlanningProvider,
+    PlanningLLMAdapter,
+    PlanningLLMError,
+    PlanningLLMErrorCategory,
+    PlanningLLMProvider,
+    PlanningProviderError,
+    PlanningProviderNotFoundError,
+    PlanningRequest,
+    PlanningResponse,
+    SuggestedStep,
+    available_planning_providers,
+    create_planning_adapter,
+    register_planning_provider,
+    validate_planning_response,
+)
 
 __all__ = [
     "AGENT_VERSION",
@@ -189,4 +216,24 @@ __all__ = [
     "ExecutionOutcome",
     "ExecutionErrorCategory",
     "ExecutionError",
+    # --- M6: LLM Planning Adapter ---
+    "PLANNING_ADAPTER_VERSION",
+    "PlanningLLMAdapter",
+    "PlanningLLMProvider",
+    "EchoPlanningProvider",
+    "OpenAIPlanningProvider",
+    "PlanningRequest",
+    "PlanningResponse",
+    "SuggestedStep",
+    "PlanningProviderError",
+    "PlanningLLMErrorCategory",
+    "PlanningLLMError",
+    "InvalidPlanningRequestError",
+    "InvalidPlanningResponseError",
+    "PlanningProviderNotFoundError",
+    "create_planning_adapter",
+    "register_planning_provider",
+    "available_planning_providers",
+    "validate_planning_response",
+    "PLANNING_PROVIDER_FACTORIES",
 ]
