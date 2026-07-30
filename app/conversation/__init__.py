@@ -11,12 +11,12 @@ exist it says so (`INSUFFICIENT_DATA` / `NOT_AVAILABLE` / `NOT_SUPPORTED`) rathe
 pre-Decision-Intelligence rule-based + optional-LLM layer — a separate concern this engine does not
 modify.
 
-**Current state (Milestones 1–4):** the **conversation domain model** (M1), the **Intent Detection
-Engine** (M2), the **Retrieval Orchestrator** (M3), and the **Prompt Builder** (M4) — a
-deterministic assembler that turns a retrieval result + the user request into a fixed-order,
-validated prompt (system + instruction templates + verbatim retrieved context + citation formatting
-+ token budgeting), never inventing or modifying content. The conversation engine, the LLM adapter,
-and the REST API arrive in later milestones.
+**Current state (Milestones 1–5):** the **conversation domain model** (M1), the **Intent Detection
+Engine** (M2), the **Retrieval Orchestrator** (M3), the **Prompt Builder** (M4), and the
+**Conversation Engine** (M5) — a deterministic, in-memory orchestrator of sessions, multi-turn
+context, lifecycle, and follow-ups that coordinates M1–M4 (runs intent detection, drives the
+lifecycle state machine, produces an orchestration result) **without** executing retrieval, prompts,
+or an LLM. The LLM adapter and the REST API arrive in later milestones.
 """
 
 from __future__ import annotations
@@ -79,6 +79,19 @@ from app.conversation.prompt import (
     PromptValidationError,
     TemplateError,
 )
+from app.conversation.engine import (
+    DEFAULT_CONTEXT_WINDOW,
+    ENGINE_VERSION,
+    ConversationEngine,
+    DuplicateMessageError,
+    EngineError,
+    FollowUpStatus,
+    InvalidTransitionError,
+    LifecycleState,
+    NextStep,
+    OrchestrationResult,
+    SessionNotFoundError,
+)
 
 __all__ = [
     "CONVERSATION_VERSION",
@@ -120,6 +133,14 @@ __all__ = [
     "INSTRUCTION_TEMPLATES",
     "PROMPT_VERSION",
     "DEFAULT_TOKEN_BUDGET",
+    # conversation engine (M5)
+    "ConversationEngine",
+    "OrchestrationResult",
+    "LifecycleState",
+    "FollowUpStatus",
+    "NextStep",
+    "ENGINE_VERSION",
+    "DEFAULT_CONTEXT_WINDOW",
     # errors
     "ConversationError",
     "InvalidMessageError",
@@ -135,4 +156,8 @@ __all__ = [
     "MissingCitationError",
     "PromptValidationError",
     "TemplateError",
+    "EngineError",
+    "SessionNotFoundError",
+    "InvalidTransitionError",
+    "DuplicateMessageError",
 ]
