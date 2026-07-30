@@ -20,9 +20,14 @@ predicts or advises; it orchestrates existing deterministic capabilities.
   `PermissionErrorCategory` enums, and `default_policy()`. Authorizes each plan step
   (ALLOWED / APPROVAL_REQUIRED / DENIED) from tool metadata + policy, emitting `PermissionRequest`s —
   no execution, engine calls, state mutation, or LLM.
+- **M5 — the deterministic Executor (`exec-1`):** `Executor`, `ExecutionResult`, `StepExecution`,
+  `ExecutionContext`, the `ToolInvoker` abstraction + `EchoToolInvoker` stub, and the
+  `ExecutionOutcome` / `ExecutionErrorCategory` enums. Runs only authorized steps in plan order
+  through the registry-gated invoker, records an immutable audit trail — no planning, permission
+  evaluation, engine access, or LLM.
 
-All deterministic (ids + checksums) and serialization round-trip. **No execution, routing, LLM**
-(those are later milestones). Imports nothing from any engine.
+All deterministic (ids + checksums) and serialization round-trip. **No routing / LLM** (later
+milestones). Imports nothing from any engine.
 """
 
 from __future__ import annotations
@@ -91,6 +96,18 @@ from app.agent.permissions import (
     PermissionRule,
     StepAuthorization,
     default_policy,
+)
+from app.agent.executor import (
+    EXECUTOR_VERSION,
+    EchoToolInvoker,
+    ExecutionContext,
+    ExecutionError,
+    ExecutionErrorCategory,
+    ExecutionOutcome,
+    ExecutionResult,
+    Executor,
+    StepExecution,
+    ToolInvoker,
 )
 
 __all__ = [
@@ -161,4 +178,15 @@ __all__ = [
     "PermissionErrorCategory",
     "PermissionEngineError",
     "default_policy",
+    # --- M5: Executor ---
+    "EXECUTOR_VERSION",
+    "Executor",
+    "ExecutionResult",
+    "StepExecution",
+    "ExecutionContext",
+    "ToolInvoker",
+    "EchoToolInvoker",
+    "ExecutionOutcome",
+    "ExecutionErrorCategory",
+    "ExecutionError",
 ]
