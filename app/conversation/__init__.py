@@ -11,10 +11,12 @@ exist it says so (`INSUFFICIENT_DATA` / `NOT_AVAILABLE` / `NOT_SUPPORTED`) rathe
 pre-Decision-Intelligence rule-based + optional-LLM layer — a separate concern this engine does not
 modify.
 
-**Current state (Milestones 1–2):** the **conversation domain model** (M1) and the **Intent
-Detection Engine** (M2) — deterministic, rule-based classification of a user request into a
-well-defined intent (no LLM, no embeddings, no retrieval). Retrieval, prompt building, the
-conversation engine, the LLM adapter, and the REST API arrive in later milestones.
+**Current state (Milestones 1–3):** the **conversation domain model** (M1), the **Intent Detection
+Engine** (M2), and the **Retrieval Orchestrator** (M3) — a deterministic, transport-independent
+layer that retrieves Decision Intelligence data (decision / evidence / explanation / confidence /
+history / similar / learning / health / version) into a conversation payload, **through the Decision
+Intelligence Engine only** (no generation, no prompts, no LLM). Prompt building, the conversation
+engine, the LLM adapter, and the REST API arrive in later milestones.
 """
 
 from __future__ import annotations
@@ -49,6 +51,20 @@ from app.conversation.intent import (
     extract_entities,
     spec_for,
 )
+from app.conversation.retrieval import (
+    RETRIEVAL_ROUTING,
+    RETRIEVAL_VERSION,
+    DecisionIntelligenceSource,
+    InvalidRetrievalRequestError,
+    RetrievalAvailability,
+    RetrievalComponent,
+    RetrievalError,
+    RetrievalOrchestrator,
+    RetrievalRequest,
+    RetrievalResult,
+    RetrievalTarget,
+)
+from app.conversation.sources import InProcessSource
 
 __all__ = [
     "CONVERSATION_VERSION",
@@ -70,6 +86,17 @@ __all__ = [
     "available_intents",
     "spec_for",
     "extract_entities",
+    # retrieval orchestrator (M3)
+    "RetrievalOrchestrator",
+    "DecisionIntelligenceSource",
+    "InProcessSource",
+    "RetrievalTarget",
+    "RetrievalAvailability",
+    "RetrievalRequest",
+    "RetrievalComponent",
+    "RetrievalResult",
+    "RETRIEVAL_ROUTING",
+    "RETRIEVAL_VERSION",
     # errors
     "ConversationError",
     "InvalidMessageError",
@@ -79,4 +106,6 @@ __all__ = [
     "IntentError",
     "InvalidIntentInputError",
     "UnknownIntentSpecError",
+    "RetrievalError",
+    "InvalidRetrievalRequestError",
 ]
