@@ -38,6 +38,12 @@ Format: [Michael Nygard's template](https://cognitect.com/blog/2011/11/15/docume
 | [0026](0026-composite-confidence-is-evidence-quality.md) | Composite confidence is an evidence-quality indicator (not a prediction) | Accepted | 5 |
 | [0027](0027-decision-intelligence-rest-thin-transport.md) | Decision Intelligence REST API: thin transport, single route owner | Accepted | 5 |
 | [0028](0028-decision-intelligence-versioning-compose-on-read.md) | Decision Intelligence versioning & compose-on-read (no persistence) | Accepted | 5 |
+| [0029](0029-conversation-intelligence-engine.md) | Conversation Intelligence Engine (read-only explanation layer) | Accepted | 6 |
+| [0030](0030-conversation-coexists-with-legacy-chat.md) | Conversation Intelligence coexists with the legacy chat assistant | Accepted | 6 |
+| [0031](0031-llm-provider-abstraction.md) | Provider-independent LLM adapter | Accepted | 6 |
+| [0032](0032-retrieval-through-decision-intelligence-only.md) | Retrieval through Decision Intelligence only (transport-independent) | Accepted | 6 |
+| [0033](0033-deterministic-honesty-gated-prompts.md) | Deterministic, honesty-gated prompt construction | Accepted | 6 |
+| [0034](0034-conversation-rest-thin-transport.md) | Conversation REST API: thin transport, orchestration outside the routes | Accepted | 6 |
 
 Related: the full Architecture Book lives in [../](../) (Volumes 00–28) and the
 Architecture Review in [../ARCHITECTURE-REVIEW-v1.md](../ARCHITECTURE-REVIEW-v1.md).

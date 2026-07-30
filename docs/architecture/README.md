@@ -40,7 +40,7 @@ The individual volumes are authored on approval, in the priority agreed below.
 | 04 | [**System Architecture**](04-system-architecture.md) | Modular-monolith now → modular services later; data flow | ✅ written |
 | 05 | [**Prediction Engine**](05-prediction-engine.md) | Calibrated logistic direction model (the core IP) | 🟢 built |
 | 06 | [**Outcome Engine**](06-outcome-engine.md) | Target-before-stop meta-labeling (the verified edge) | 🟢 built |
-| 07 | [**GPT / Conversation Assistant**](07-gpt-assistant.md) | LLM as orchestrator over Aegis services; never predicts | 🟡 basic |
+| 07 | [**GPT / Conversation Assistant**](07-gpt-assistant.md) | LLM as orchestrator over Aegis services; never predicts | 🟢 **Sprint 6 COMPLETE** (`v0.6.0`) — Conversation Intelligence over Decision Intelligence, `/chat/*`, explain-only ([as-built](conversation-intelligence-engine.md)); legacy `app/chat/` 🟡 basic |
 | 08 | [**Market Intelligence**](08-market-intelligence.md) | Market state, trend/vol context, explainable report | 🟢 built |
 | 09 | [**Sector Intelligence**](09-sector-intelligence.md) | NSE sector rotation ranking; context not edge | 🟢 built |
 | 10 | [**News Intelligence**](10-news-intelligence.md) | Indian sources, event classification, impact | 🟡 basic sentiment |
@@ -104,6 +104,15 @@ edge, no advice** (distinct from the legacy live-analysis intelligence, ADR 0023
 [Sprint 5 plan](sprints/sprint-05-decision-intelligence-plan.md) · [Sprint 5 report](../sprints/sprint-05-report.md)
 · [As-built volume](decision-intelligence-engine.md) · [Release notes](../releases/v0.5.0-decision-intelligence.md)
 · [ADRs 0023–0028](adr/).
+
+## 🏁 Delivered: Sprint 6 — Conversation Intelligence Engine (`v0.6.0-conversation-intelligence`, COMPLETE)
+A **read-only conversational explanation layer** over Decision Intelligence is **built**: domain model
+→ intent detection → retrieval orchestrator → prompt builder → conversation engine → LLM adapter →
+`/chat/*` API. The LLM **explains only** — no prediction, no advice, no hallucination; honest
+`INSUFFICIENT_DATA`/`NOT_AVAILABLE`/`NOT_SUPPORTED` (distinct from the legacy `app/chat/`, ADR
+0029/0030). Closure: [Sprint 6 plan](sprints/sprint-06-conversation-plan.md) · [Sprint 6 report](../sprints/sprint-06-report.md)
+· [As-built volume](conversation-intelligence-engine.md) · [Release notes](../releases/v0.6.0-conversation-intelligence.md)
+· [ADRs 0029–0034](adr/).
 
 ## ✅ Book status: all 28 volumes authored (v1.0) · Review complete → v1.1 proposed
 

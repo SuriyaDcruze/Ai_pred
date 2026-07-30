@@ -3,8 +3,10 @@
 > **Process (identical to Sprints 1–5):** Architecture → Milestones → Review → Approval →
 > Implementation, one milestone at a time with a review gate after each.
 >
-> **Status:** 🔨 **Approved — implementing milestone by milestone.** **M1 ✅ · M2 ✅ · M3 ✅ · M4 ✅
-> · M5 ✅ · M6 ✅ · M7 (REST API): ✅ done — awaiting review.** M8 pending.
+> **Status:** ✅ **SPRINT 6 COMPLETE** — frozen at `v0.6.0`, tag `v0.6.0-conversation-intelligence`.
+> **M1 ✅ · M2 ✅ · M3 ✅ · M4 ✅ · M5 ✅ · M6 ✅ · M7 ✅ · M8 (docs & freeze) ✅ — all done.** See the
+> [Sprint 6 report](../../sprints/sprint-06-report.md), [as-built volume](../conversation-intelligence-engine.md),
+> [release notes](../../releases/v0.6.0-conversation-intelligence.md), and [ADRs 0029–0034](../adr/).
 >
 > **Sprint sequence:** Sprint 1 (Forward Testing `v0.1.0`) → Sprint 2 (Historical Memory `v0.2.0`)
 > → Sprint 3 (Similarity `v0.3.0`) → Sprint 4 (Learning `v0.4.0`) → Sprint 5 (Decision Intelligence
@@ -58,7 +60,7 @@ thin router at M7). Read-only; no writes to any prior table.
 | **M5** ✅ | Conversation Engine | session handling, memory, follow-ups, multi-turn, context persistence, lifecycle. | **done:** `app/conversation/engine.py`; 14 tests. `eng-1`; in-memory session manager (deterministic ids, immutable snapshots); lifecycle state machine (`CREATED`/`ACTIVE`/`WAITING_FOR_INPUT`/`COMPLETED`/`EXPIRED`/`ERROR`, validated transitions); message pipeline (validate → intent (M2) → route → append → context); multi-turn memory (follow-ups recall the subject; pending-intent resume); follow-up manager (`CONTINUATION`/`CLARIFICATION_REQUIRED`/`MISSING_ENTITY`/`COMPLETED`); deterministic context window/pruning; `OrchestrationResult` + serialization. No LLM/retrieval/prompt execution; imports no engine (AST). No Sprint 1–5 / M1–M4 file touched. |
 | **M6** ✅ | LLM Adapter | provider-independent abstraction (OpenAI / Azure OpenAI / local future). | **done:** `app/conversation/llm_adapter.py`; 18 tests. `llm-1`; `LLMProvider` ABC + `LLMAdapter` (generate/health/version); registry + factory (`create_adapter`); `EchoProvider` (deterministic offline stub — the concrete impl) + `OpenAIProvider`/`azure_openai` (duck-typed client, **no SDK import**); `LLMRequest`/`LLMResponse`/`LLMError` models; validation; response normalization; deterministic error categories (INVALID_REQUEST/AUTH/RATE_LIMITED/UNAVAILABLE/TIMEOUT/INTERNAL); serialization (latency excluded). Imports no LLM SDK / engine (AST). No Sprint 1–5 / M1–M5 file touched. |
 | **M7** ✅ | REST API | thin `/chat`-style transport: chat, session, health, version. | **done:** `app/api/chat.py` (6 endpoints: `POST /chat/message`, `POST /chat/session`, `GET`/`DELETE /chat/session/{id}`, `GET /chat/health`, `GET /chat/version`); 18 tests. Thin transport — orchestrates Engine→Retrieval→Prompt→LLM (no logic of its own); request/response models; error taxonomy `400/404/409/429/503` (LLM categories mapped, never leaked); aggregate health; OpenAPI. Owns the `/chat/*` **sub-namespace** — message endpoint is `POST /chat/message` (the legacy exact `POST /chat` is untouched). Only `api/main.py` mount touched (1 line) + a **backward-compatible M5 lifecycle fix** (`CREATED→COMPLETED/EXPIRED` now allowed, required by DELETE — all M5 tests unchanged). Imports neither engine (AST). |
-| **M8** | Documentation & release | as-built volume, ADRs, Sprint 6 report, release notes `v0.6.0`, compatibility matrix, version bump, tag `v0.6.0-conversation-intelligence`. Freeze. | pending |
+| **M8** ✅ | Documentation & release | as-built volume, ADRs, Sprint 6 report, release notes `v0.6.0`, compatibility matrix, version bump, tag `v0.6.0-conversation-intelligence`. Freeze. | **done:** [as-built Vol 07](../conversation-intelligence-engine.md); ADRs `0029`–`0034`; [Sprint 6 report](../../sprints/sprint-06-report.md); [release notes `v0.6.0`](../../releases/v0.6.0-conversation-intelligence.md) + compatibility matrix; `docs/RESULTS.md` updated; `app/__init__.py` → `0.6.0`; architecture README updated; tag `v0.6.0-conversation-intelligence`. |
 
 Each milestone: implement only that milestone → full suite green → prove Sprints 1–5 + engines
 untouched → docs-before-push → commit + push → **STOP for review**.

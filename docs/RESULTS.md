@@ -319,9 +319,17 @@ that. Nothing at this state of the art can.
 - Honest tooling: baseline race, calibration report, confidence analyzer, backtester,
   **purged walk-forward harness + feature-challenger pipeline** (new)
 - Nightly retrain (champion/challenger) and meta-model, both built
-- **~215 automated tests passing**, incl. 8 leakage / future-invariance tests; all
+- **~890 automated tests passing** (was ~215), incl. 8 leakage / future-invariance tests; all
   pushed to `SuriyaDcruze/Ai_pred`
 - A red **learning-mode banner** on the dashboard, on by default, telling the truth
+- **Six read-only "intelligence" engines built & frozen (v0.1.0 → v0.6.0)** — all additive over the
+  models, all honesty-gated, **none manufactures an edge or gives advice**:
+  Forward Testing (`v0.1.0`, `/forward/*`), Historical Memory (`v0.2.0`, `/memory/*`), Similarity
+  (`v0.3.0`, `/memory/similar*`), Learning analytics (`v0.4.0`, `/learning/*`), Decision Intelligence
+  (`v0.5.0`, `/intelligence/*` — composes the four into one explainable object), and the Conversation
+  Intelligence Engine (`v0.6.0`, `/chat/*` — explains it in natural language; the LLM explains only).
+  They are **read-only over stored/derived data**; on today's near-empty live corpus they honestly
+  report `INSUFFICIENT_DATA` everywhere — a *pass*, not a gap.
 
 ### ⏳ In progress / waiting on time
 - **Meta-model needs data.** It learns which signals win from your live Track Record,
