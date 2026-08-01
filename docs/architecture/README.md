@@ -40,7 +40,7 @@ The individual volumes are authored on approval, in the priority agreed below.
 | 04 | [**System Architecture**](04-system-architecture.md) | Modular-monolith now → modular services later; data flow | ✅ written |
 | 05 | [**Prediction Engine**](05-prediction-engine.md) | Calibrated logistic direction model (the core IP) | 🟢 built |
 | 06 | [**Outcome Engine**](06-outcome-engine.md) | Target-before-stop meta-labeling (the verified edge) | 🟢 built |
-| 07 | [**GPT / Conversation Assistant**](07-gpt-assistant.md) | LLM as orchestrator over Aegis services; never predicts | 🟢 **Sprint 6 COMPLETE** (`v0.6.0`) — Conversation Intelligence over Decision Intelligence, `/chat/*`, explain-only ([as-built](conversation-intelligence-engine.md)); legacy `app/chat/` 🟡 basic |
+| 07 | [**GPT / Conversation Assistant**](07-gpt-assistant.md) | LLM as orchestrator over Aegis services; never predicts | 🟢 **Sprint 6 COMPLETE** (`v0.6.0`) — Conversation Intelligence over Decision Intelligence, `/chat/*`, explain-only ([as-built](conversation-intelligence-engine.md)) · 🟢 **Sprint 7 COMPLETE** (`v0.7.0`) — the **Agent Engine**: deterministic planning + permissioned, audited tool-execution over the engines, `/agent/*` ([as-built](agent-engine.md)); LLM planning is advisory-only, never predicts/advises; legacy `app/chat/` 🟡 basic |
 | 08 | [**Market Intelligence**](08-market-intelligence.md) | Market state, trend/vol context, explainable report | 🟢 built |
 | 09 | [**Sector Intelligence**](09-sector-intelligence.md) | NSE sector rotation ranking; context not edge | 🟢 built |
 | 10 | [**News Intelligence**](10-news-intelligence.md) | Indian sources, event classification, impact | 🟡 basic sentiment |
@@ -113,6 +113,18 @@ A **read-only conversational explanation layer** over Decision Intelligence is *
 0029/0030). Closure: [Sprint 6 plan](sprints/sprint-06-conversation-plan.md) · [Sprint 6 report](../sprints/sprint-06-report.md)
 · [As-built volume](conversation-intelligence-engine.md) · [Release notes](../releases/v0.6.0-conversation-intelligence.md)
 · [ADRs 0029–0034](adr/).
+
+## 🏁 Delivered: Sprint 7 — Agent Engine (`v0.7.0-agent-engine`, COMPLETE)
+A **deterministic planning + permissioned tool-execution** layer over the existing read-only engines is
+**built**: domain model → tool registry (metadata) → planner → permission engine → executor → advisory
+LLM planning adapter → `/agent/*` API. It orchestrates the engines **as tools** with an explicit
+approval gate and a full immutable **audit trail**; it **never predicts or advises** and invokes no
+engine directly (a metadata safety floor means a state-changing tool can never run without approval;
+LLM planning is advisory and the deterministic Planner is the authority). Distinct from the legacy
+`app/chat/` and the Conversation Engine (ADR 0035). Closure:
+[Sprint 7 plan](sprints/sprint-07-agent-plan.md) · [Sprint 7 report](../sprints/sprint-07-report.md)
+· [As-built volume](agent-engine.md) · [Release notes](../releases/v0.7.0-agent-engine.md)
+· [ADRs 0035–0041](adr/).
 
 ## ✅ Book status: all 28 volumes authored (v1.0) · Review complete → v1.1 proposed
 

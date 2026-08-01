@@ -402,6 +402,14 @@ it is now **wired into the live dashboard** (a TAKE/VETO layer) and powers the
   sectors by relative strength vs Nifty + momentum, maps each stock to its sector, and
   folds "sector Strong/Weak, rank N/10" into the analysis For/Against. "Understand the
   sector before the stock." Context, not edge. 8 tests.
+- ✅ Built the **read-only intelligence engines** (Sprints 1–7, `v0.1.0`→`v0.7.0`):
+  Forward Testing → Historical Memory → Similarity → Learning → Decision Intelligence →
+  Conversation → **Agent Engine**. Every one is **read-only, deterministic, and adds no
+  predictive edge** — they store, retrieve, explain, and (Sprint 7) plan/authorize/execute
+  existing capabilities under permission with an audit trail. The Conversation layer
+  *explains only*; the Agent Engine *orchestrates under permission* and invokes no engine
+  directly (offline stubs ship) — neither predicts or advises. **The only verified edge
+  remains the Outcome Engine (backtest-only).** 998 tests pass.
 
 **The one thing still missing — and it's the big one: a live track record.** Every
 positive number is backtest. Immediate next step: **weeks-to-months of paper

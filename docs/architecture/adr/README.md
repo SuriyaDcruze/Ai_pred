@@ -44,6 +44,13 @@ Format: [Michael Nygard's template](https://cognitect.com/blog/2011/11/15/docume
 | [0032](0032-retrieval-through-decision-intelligence-only.md) | Retrieval through Decision Intelligence only (transport-independent) | Accepted | 6 |
 | [0033](0033-deterministic-honesty-gated-prompts.md) | Deterministic, honesty-gated prompt construction | Accepted | 6 |
 | [0034](0034-conversation-rest-thin-transport.md) | Conversation REST API: thin transport, orchestration outside the routes | Accepted | 6 |
+| [0035](0035-agent-engine.md) | Agent Engine (deterministic planning + permissioned tool-execution layer) | Accepted | 7 |
+| [0036](0036-tool-registry-metadata-only.md) | Tool Registry: a metadata catalog, never an executor | Accepted | 7 |
+| [0037](0037-deterministic-planner.md) | Deterministic Planner (registry-metadata-only, no LLM in the plan path) | Accepted | 7 |
+| [0038](0038-permission-model-safety-floor.md) | Permission model: a metadata safety floor, policy tightens-only | Accepted | 7 |
+| [0039](0039-executor-registry-gated-audited.md) | Executor: registry-gated invoker abstraction, immutable audit, no engine access | Accepted | 7 |
+| [0040](0040-advisory-llm-planning.md) | Advisory LLM planning: the deterministic Planner is the authority | Accepted | 7 |
+| [0041](0041-agent-rest-thin-transport.md) | Agent REST API: thin transport, single route owner (`/agent/*`) | Accepted | 7 |
 
 Related: the full Architecture Book lives in [../](../) (Volumes 00–28) and the
 Architecture Review in [../ARCHITECTURE-REVIEW-v1.md](../ARCHITECTURE-REVIEW-v1.md).
