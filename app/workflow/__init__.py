@@ -6,16 +6,31 @@ rollback hooks, waiting + approval checkpoints, scheduling, timeout, cancellatio
 interruption. It sits **above** the Agent Engine and reaches the AEGIS engines **only through** it; it
 never predicts, trains, bypasses permissions, replaces the Agent Engine, or executes business logic.
 
-**Current state (Milestone 1):** the **Workflow domain model** only — `Workflow`, `WorkflowSession`
-(+ its validated lifecycle state machine), `WorkflowDefinition`, `WorkflowStep`, `WorkflowTransition`,
-`WorkflowExecution`, the immutable `WorkflowEvent`, `WorkflowCheckpoint`, and `WorkflowResult`.
-Deterministic ids, checksums, and serialization. **No runtime, transitions, scheduling, retries,
-checkpoint storage, agent invocation, REST, or persistence** (those are later milestones). Imports
-nothing from any engine — not the Prediction engine, not the Outcome engine, and not the Agent Engine.
+**Current state (Milestones 1–2):**
+- **M1 — the Workflow domain model:** `Workflow`, `WorkflowSession` (+ its validated lifecycle state
+  machine), `WorkflowDefinition`, `WorkflowStep`, `WorkflowTransition`, `WorkflowExecution`, the
+  immutable `WorkflowEvent`, `WorkflowCheckpoint`, and `WorkflowResult`.
+- **M2 — Definition & Validation (`wfdef-1`, static only):** `DefinitionValidator`, `ValidationResult`,
+  `ValidationIssue`, `ValidationError` (+ the `ValidationErrorCode` taxonomy), and the immutable
+  `WorkflowRegistry`.
+
+All deterministic (ids + checksums) and serialization round-trip. **No runtime, transitions,
+scheduling, retries, checkpoint storage, agent invocation, REST, or persistence** (those are later
+milestones). Imports nothing from any engine — not the Prediction engine, not the Outcome engine, and
+not the Agent Engine.
 """
 
 from __future__ import annotations
 
+from app.workflow.definition import (
+    WORKFLOW_DEFINITION_VERSION,
+    DefinitionValidator,
+    ValidationError,
+    ValidationErrorCode,
+    ValidationIssue,
+    ValidationResult,
+    WorkflowRegistry,
+)
 from app.workflow.models import (
     WORKFLOW_VERSION,
     InvalidWorkflowDefinitionError,
@@ -67,4 +82,12 @@ __all__ = [
     "InvalidWorkflowEventError",
     "SchemaConsistencyError",
     "UnsupportedVersionError",
+    # --- M2: Definition & Validation ---
+    "WORKFLOW_DEFINITION_VERSION",
+    "DefinitionValidator",
+    "ValidationResult",
+    "ValidationIssue",
+    "ValidationError",
+    "ValidationErrorCode",
+    "WorkflowRegistry",
 ]
